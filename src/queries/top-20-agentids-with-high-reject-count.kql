@@ -1,0 +1,15 @@
+// Source: Microsoft FastTrack Conversation Diagnostics dashboard
+// Tile: Top 20 AgentIDs with high reject count
+traces
+| where timestamp >= _startTime and timestamp <= _endTime
+| extend customDim = parse_json(customDimensions)
+| extend agentId = tostring(customDim["omnichannel.target_agent.id"]), // Extract agent ID from custom dimensions
+         subscenario = tostring(customDim["powerplatform.analytics.subscenario"])
+| extend scenario = tostring(customDim["powerplatform.analytics.scenario"])
+| where scenario == "ConversationDiagnosticsScenario"
+| where subscenario == "CSRRejected"
+| summarize totalRejections = count() by agentId // Count total rejections for each agent
+| sort by totalRejections desc // Sort by rejection count in descending order
+| top 20 by totalRejections // Select top 20 agents
+| project agentId, totalRejections // Project relevant columns
+

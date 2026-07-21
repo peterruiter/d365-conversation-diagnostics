@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<manifest>
+  <control namespace="ConversationDiagnostics" constructor="RoutingOverview" version="1.0.0"
+           display-name-key="Routing Overview"
+           description-key="Unified routing diagnostics overview: incoming work items with cross-filtered classification, queue routing, assignment and timeline panels."
+           control-type="standard">
+    <property name="dummy" display-name-key="Dummy" description-key="Unused; PCF requires one property."
+              of-type="SingleLine.Text" usage="input" required="false" />
+    <resources>
+      <code path="index.ts" order="1" />
+      <css path="css/overview.css" order="1" />
+    </resources>
+    <feature-usage>
+      <uses-feature name="WebAPI" required="true" />
+    </feature-usage>
+  </control>
+</manifest>

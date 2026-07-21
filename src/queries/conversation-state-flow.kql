@@ -1,0 +1,13 @@
+// Source: Microsoft FastTrack Conversation Diagnostics dashboard
+// Tile: Conversation State Flow
+traces
+| where timestamp >= _startTime and timestamp <= _endTime
+| extend customDim = parse_json(customDimensions)
+| extend conversationId = tostring(customDim["powerplatform.analytics.resource.id"]), subscenario = tostring(customDim["powerplatform.analytics.subscenario"])
+| extend scenario = tostring(customDim["powerplatform.analytics.scenario"])
+| where scenario == "ConversationDiagnosticsScenario"
+| where conversationId != "" and subscenario != ""
+| project timestamp, conversationId, subscenario
+| sort by timestamp asc
+| summarize make_list(subscenario) by conversationId
+| project conversationId, conversationFlow = strcat_array(list_subscenario, " -> ")

@@ -1,0 +1,8 @@
+<environmentvariabledefinition schemaname="crd_ClientSecretPlain">
+  <displayname default="Client Secret (plain fallback)">
+    <label description="Client Secret (plain fallback)" languagecode="1033" />
+  </displayname>
+  <isrequired>0</isrequired>
+  <secretstore>0</secretstore>
+  <type>100000000</type>
+</environmentvariabledefinition>

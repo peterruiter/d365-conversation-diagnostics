@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<manifest>
+  <control namespace="ConversationDiagnostics" constructor="ConversationAnalyzer" version="1.0.0"
+           display-name-key="Conversation Analyzer"
+           description-key="Timeline and deterministic explanation of unified routing decisions for a single conversation."
+           control-type="standard">
+    <property name="conversationId" display-name-key="Conversation Id" description-key="Optional bound/inbound conversation id (GUID)."
+              of-type="SingleLine.Text" usage="input" required="false" />
+    <resources>
+      <code path="index.ts" order="1" />
+      <css path="css/analyzer.css" order="1" />
+    </resources>
+    <feature-usage>
+      <uses-feature name="WebAPI" required="true" />
+    </feature-usage>
+  </control>
+</manifest>

@@ -1,0 +1,34 @@
+// Source: Microsoft FastTrack Conversation Diagnostics dashboard
+// Tile: Agent Assignment Took Longer Than 2 Minutes
+// Extract relevant subscenarios
+let subscenarios = traces
+| where timestamp >= _startTime and timestamp <= _endTime
+| extend customDim = parse_json(customDimensions)
+| extend conversationId = tostring(customDim["powerplatform.analytics.resource.id"]),
+         subscenario = tostring(customDim["powerplatform.analytics.subscenario"])
+| where subscenario in ("RouteToQueue", "CSRAccepted")
+| project timestamp, conversationId, subscenario;
+// Find the latest RTQ before each AgentAccept
+let latestRTQsBeforeAgentAccept = subscenarios
+| where subscenario == "RouteToQueue"
+| join kind=inner (
+    subscenarios
+    | where subscenario == "CSRAccepted"
+    | project agentAcceptTime = timestamp, conversationId
+) on conversationId
+| where timestamp < agentAcceptTime // Ensure RTQ is before AgentAccept
+| summarize latestRTQTime = max(timestamp) by conversationId, agentAcceptTime;
+// Calculate assignment time
+latestRTQsBeforeAgentAccept
+| extend assignmentTime = agentAcceptTime - latestRTQTime
+| where assignmentTime > 2min
+| project conversationId, assignmentTime
+
+
+//| extend prevTimestamp = prev(timestamp), prevSubscenario = prev(subscenario)
+//| where prevSubscenario == "RTQ" and subscenario == "AgentAccept"
+//| extend assignmentTime = timestamp - prevTimestamp
+//| where assignmentTime > 2min
+//| project conversationId, assignmentTime
+
+//take the closest RTQ to the AgentAccept

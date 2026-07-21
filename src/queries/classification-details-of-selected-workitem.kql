@@ -1,0 +1,23 @@
+// Source: Microsoft FastTrack Conversation Diagnostics dashboard
+// Tile: Classification details of selected workitem
+traces  
+| extend customDim = parse_json(customDimensions)  
+| extend workItem = tostring(customDim["powerplatform.analytics.resource.id"])  
+| extend subscenario = tostring(customDim["powerplatform.analytics.subscenario"])  
+| extend classificationResult = tostring(customDim["omnichannel.result"])  // Extract classification result  
+| extend additionalInfoRaw = tostring(customDim["omnichannel.additional_info"])  
+| extend additionalInfo = parse_json(additionalInfoRaw)  
+| extend ruleSetName = tostring(additionalInfo.RuleSetName),  
+         ruleHitPolicy = tostring(additionalInfo.RuleHitPolicy),  
+         rulesList = additionalInfo.RuleSetInfo  
+| mv-expand rules = rulesList to typeof(dynamic)  
+| extend ruleId = tostring(rules.RuleId),  
+         ruleStatus = tostring(rules.Status),  
+         ruleOrder = toint(rules.Order),  
+         ruleItem = tostring(rules.RuleItem),  
+         ruleCondition = tostring(rules.Condition),  
+         ruleOutput = tostring(rules.Output)  
+| where workItem == workitemID  // Replace with actual work item  
+| where subscenario contains "Classification"  
+| project timestamp, workItem, subscenario, ruleSetName, ruleHitPolicy, ruleItem, ruleStatus, ruleOrder, ruleCondition, ruleOutput, classificationResult  
+| order by timestamp asc  

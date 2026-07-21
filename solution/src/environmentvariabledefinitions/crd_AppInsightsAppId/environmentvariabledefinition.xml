@@ -1,0 +1,8 @@
+<environmentvariabledefinition schemaname="crd_AppInsightsAppId">
+  <displayname default="App Insights App Id">
+    <label description="App Insights App Id" languagecode="1033" />
+  </displayname>
+  <isrequired>0</isrequired>
+  <secretstore>0</secretstore>
+  <type>100000000</type>
+</environmentvariabledefinition>

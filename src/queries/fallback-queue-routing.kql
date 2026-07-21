@@ -1,0 +1,12 @@
+// Source: Microsoft FastTrack Conversation Diagnostics dashboard
+// Tile: Fallback Queue Routing
+traces
+| where timestamp >= _startTime and timestamp <= _endTime
+| extend customDim = parse_json(customDimensions)
+| extend conversationId = tostring(customDim["powerplatform.analytics.resource.id"]), 
+         subscenario = tostring(customDim["powerplatform.analytics.subscenario"]),
+         queueResult = parse_json(tostring(customDim["omnichannel.result"])).DisplayName
+| extend scenario = tostring(customDim["powerplatform.analytics.scenario"])
+| where scenario == "ConversationDiagnosticsScenario"         
+| where subscenario == "RouteToQueue" and queueResult == "Case Question Queue" 
+| project timestamp, conversationId, queueResult

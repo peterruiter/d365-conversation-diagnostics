@@ -1,0 +1,20 @@
+// Source: Microsoft FastTrack Conversation Diagnostics dashboard
+// Tile: Timeline of selected workitem
+let _conversationId = workitemID;
+traces
+| extend customDim = parse_json(customDimensions)
+| extend conversationId = tostring(customDim["powerplatform.analytics.resource.id"]),
+         subscenario = tostring(customDim["powerplatform.analytics.subscenario"])
+| where conversationId == _conversationId and subscenario != ""
+| project timestamp, subscenario
+| order by timestamp asc
+| serialize
+| extend  prevSub = prev(subscenario)
+| extend occurrenceNumber =  1
+//| extend occurrenceNumber = row_cumsum(iif(prev(subscenario) == subscenario and subscenario != "ConversationCreated", 1, 0)) + 1
+| extend rNumber = row_number(0)
+| extend subscenarioIndexed = iif(subscenario == "ConversationCreated", subscenario, strcat(subscenario, " ", tostring(rNumber)))  // No index for "ConversationCreated"
+| extend prevTimestamp = prev(timestamp)
+| extend timeSpent = iif(isnull(prevTimestamp), 0, datetime_diff('second', timestamp, prevTimestamp))
+| extend cumulativeTimeSpent = row_cumsum(timeSpent)  // Cumulative sum of time spent
+| project occurrenceNumber, subscenarioIndexed, timeSpent, cumulativeTimeSpent, prevSub, rNumber

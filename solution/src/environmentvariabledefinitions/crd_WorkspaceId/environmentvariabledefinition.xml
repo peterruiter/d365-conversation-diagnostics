@@ -1,0 +1,8 @@
+<environmentvariabledefinition schemaname="crd_WorkspaceId">
+  <displayname default="Log Analytics Workspace Id">
+    <label description="Log Analytics Workspace Id" languagecode="1033" />
+  </displayname>
+  <isrequired>0</isrequired>
+  <secretstore>0</secretstore>
+  <type>100000000</type>
+</environmentvariabledefinition>

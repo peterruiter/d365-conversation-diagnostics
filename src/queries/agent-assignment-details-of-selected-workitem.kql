@@ -1,0 +1,39 @@
+// Source: Microsoft FastTrack Conversation Diagnostics dashboard
+// Tile: Agent Assignment details of selected workitem
+let targetWorkItem = workitemID;  
+let presenceMapping = datatable(PresenceId: string, PresenceName: string)
+[
+    "f523f628-c07a-e811-8162-000d3aa11f50", "Available",
+    "efdeb843-c07a-e811-8162-000d3aa11f50", "Busy",
+    "08971864-c07a-e811-8162-000d3aa11f50", "Busy DND",
+    "70139190-c07a-e811-8162-000d3aa11f50", "Offline",
+    "3dacae76-c07a-e811-8162-000d3aa11f50", "Away"
+];
+traces
+| extend customDim = parse_json(customDimensions)  
+| extend workItem = tostring(customDim["powerplatform.analytics.resource.id"])  
+| where workItem == targetWorkItem  
+| extend subscenario = tostring(customDim["powerplatform.analytics.subscenario"])  
+| extend assignmentMethod = tostring(customDim["omnichannel.assignment.method"])  
+| extend assignmentStatusRaw = tostring(customDim["omnichannel.assignment.status"])  
+| extend assignmentStatus = iff(isnotempty(assignmentStatusRaw), parse_json(assignmentStatusRaw), dynamic({}))  
+| extend isAgentAssigned = tostring(assignmentStatus.IsAgentAssigned),
+         agentId = tostring(assignmentStatus.AgentDetails.AgentId),
+         aadUserId = tostring(assignmentStatus.AgentDetails.AadUserId),
+         agentCapacity = toint(assignmentStatus.AgentDetails.AvailableCapacity),
+         agentPresence = tostring(assignmentStatus.AgentDetails.CurrentPresence)  
+// Fetch Rule Sets from omnichannel.rule_sets
+| extend ruleSetsRaw = tostring(customDim["omnichannel.rule_sets"])  
+| extend ruleSets = iff(isnotempty(ruleSetsRaw) and ruleSetsRaw != "[]", parse_json(ruleSetsRaw), dynamic([{}]))  
+| mv-expand rules = ruleSets to typeof(dynamic)  
+| extend ruleStatus = tostring(rules.Status),  
+         ruleOrder = toint(rules.Order),  
+         ruleItem = tostring(rules.RuleItem),  
+         ruleCondition = tostring(rules.Condition),  
+         ruleOutput = tostring(rules.Output),  
+         ruleOrderBy = tostring(rules.OrderBy)  
+| where subscenario in ("NewWorkItemTrigger", "AgentAvailabilityTrigger","AgentAssignment","CSRAssignment")  
+| join kind=leftouter presenceMapping on $left.agentPresence == $right.PresenceId
+| extend currentAgentPresence = iff(isnotempty(PresenceName), PresenceName, "Unknown") 
+| project timestamp, workItem, subscenario, assignmentMethod, isAgentAssigned, agentId, agentCapacity, currentAgentPresence, ruleStatus, ruleOrder, ruleItem, ruleCondition, ruleOutput, ruleOrderBy  
+| order by timestamp asc  

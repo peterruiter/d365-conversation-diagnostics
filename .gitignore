@@ -1,0 +1,8 @@
+node_modules/
+out/
+bin/
+obj/
+generated/
+*.snk
+.vs/
+*.user

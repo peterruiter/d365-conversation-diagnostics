@@ -1,0 +1,56 @@
+name: Build and release solution
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.x
+
+      - name: Install PAC CLI
+        run: dotnet tool install --global Microsoft.PowerApps.CLI.Tool
+
+      - name: Install PCF dependencies
+        run: |
+          npm ci --prefix src/controls/ConversationAnalyzer
+          npm ci --prefix src/controls/RoutingOverview
+
+      - name: Generate strong-name key
+        shell: pwsh
+        run: |
+          if (-not (Test-Path "src/plugin/ConversationDiagnostics.Plugins/ConversationDiagnostics.snk")) {
+            & "$env:ProgramFiles(x86)\Microsoft SDKs\Windows\v10.0A\bin\NETFX 4.8 Tools\sn.exe" -k src/plugin/ConversationDiagnostics.Plugins/ConversationDiagnostics.snk
+          }
+
+      - name: Build solution (managed + unmanaged)
+        run: dotnet build solution/ConversationDiagnostics.cdsproj -c Release
+
+      - name: Collect artifacts
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path out | Out-Null
+          Copy-Item solution/bin/Release/*.zip out/
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: solutions
+          path: out/*.zip
+
+      - name: Create GitHub release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: out/*.zip
+          generate_release_notes: true

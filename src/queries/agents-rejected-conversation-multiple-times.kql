@@ -1,0 +1,36 @@
+// Source: Microsoft FastTrack Conversation Diagnostics dashboard
+// Tile: Agents Rejected Conversation Multiple Times
+traces
+| where timestamp >= _startTime and timestamp <= _endTime
+| extend customDim = parse_json(customDimensions)
+| extend conversationId = tostring(customDim["powerplatform.analytics.resource.id"]), 
+         subscenario = tostring(customDim["powerplatform.analytics.subscenario"]),
+         agentId = tostring(customDim["omnichannel.target_agent.id"]) // Extract agent ID from custom dimensions
+| extend scenario = tostring(customDim["powerplatform.analytics.scenario"])
+| where scenario == "ConversationDiagnosticsScenario"         
+| where subscenario == "CSRRejected"
+| summarize agentRejectionCount = count() by conversationId, agentId // Count rejections per agent per conversation
+| summarize rejectionCount = sum(agentRejectionCount), 
+            agentRejectionDetails = make_list(pack('agentId', agentId, 'rejectionCount', agentRejectionCount)) 
+    by conversationId // Aggregate results by conversation
+| where rejectionCount > 1 // Filter conversations with more than one rejection
+| project conversationId, rejectionCount, agentRejectionDetails
+
+
+
+
+
+//traces
+//| where timestamp >= _startTime and timestamp <= _endTime
+//| extend customDim = parse_json(customDimensions)
+//| extend conversationId = tostring(customDim["powerplatform.analytics.resource.id"]), 
+ //        subscenario = tostring(customDim["powerplatform.analytics.subscenario"])
+//| where subscenario == "AgentReject"
+//| summarize rejectionCount = count() by conversationId
+//| where rejectionCount > 1
+//| project conversationId, rejectionCount
+
+//add agentid and for every agent can reject so the count of reject for every agentid
+//for example
+//fd29c594-8989-4582-8e4f-b9ea8acc3bc8, agent1, 2, 
+//fd29c594-8989-4582-8e4f-b9ea8acc3bc8, agent2, 1,

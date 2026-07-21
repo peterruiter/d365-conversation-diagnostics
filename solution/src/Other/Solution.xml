@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ImportExportXml version="9.2.0.0" SolutionPackageVersion="9.2" languagecode="1033" generatedBy="CrmLive" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <SolutionManifest>
+    <UniqueName>ConversationDiagnostics</UniqueName>
+    <LocalizedNames>
+      <LocalizedName description="Conversation Diagnostics for Dynamics 365" languagecode="1033" />
+    </LocalizedNames>
+    <Descriptions>
+      <Description description="Unified routing / conversation diagnostics dashboards inside Dynamics 365, backed by Azure Application Insights. No Azure access needed for users." languagecode="1033" />
+    </Descriptions>
+    <Version>1.0.0.0</Version>
+    <Managed>2</Managed>
+    <Publisher>
+      <UniqueName>PeterRuiter</UniqueName>
+      <LocalizedNames>
+        <LocalizedName description="Peter Ruiter" languagecode="1033" />
+      </LocalizedNames>
+      <Descriptions />
+      <EMailAddress xsi:nil="true"></EMailAddress>
+      <SupportingWebsiteUrl xsi:nil="true"></SupportingWebsiteUrl>
+      <CustomizationPrefix>crd</CustomizationPrefix>
+      <CustomizationOptionValuePrefix>68000</CustomizationOptionValuePrefix>
+      <Addresses>
+        <Address>
+          <AddressNumber>1</AddressNumber>
+          <AddressTypeCode xsi:nil="true"></AddressTypeCode>
+          <City xsi:nil="true"></City>
+          <County xsi:nil="true"></County>
+          <Country xsi:nil="true"></Country>
+        </Address>
+      </Addresses>
+    </Publisher>
+    <RootComponents />
+    <MissingDependencies />
+  </SolutionManifest>
+</ImportExportXml>

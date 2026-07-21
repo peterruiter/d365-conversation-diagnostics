@@ -1,0 +1,29 @@
+// Source: Microsoft FastTrack Conversation Diagnostics dashboard
+// Tile: Route to queue details of selected workitem
+traces  
+| extend customDim = parse_json(customDimensions)  
+| extend workItem = tostring(customDim["powerplatform.analytics.resource.id"])  
+| extend subscenario = tostring(customDim["powerplatform.analytics.subscenario"])  
+| extend resultJson = parse_json(customDim["omnichannel.result"])  
+| extend finalQueueId = tostring(resultJson.Id),  
+         finalQueueName = tostring(resultJson.DisplayName)  
+| extend routingError = tostring(customDim["omnichannel.description"])  // Extract routing error message  
+| extend additionalInfoRaw = tostring(customDim["omnichannel.additional_info"])  
+| extend additionalInfo = parse_json(additionalInfoRaw)  
+| extend ruleSetName = tostring(additionalInfo.RuleSetName),  
+         ruleHitPolicy = tostring(additionalInfo.RuleHitPolicy),  
+         rulesList = additionalInfo.RuleSetInfo  
+| mv-expand rules = rulesList to typeof(dynamic)  
+| extend ruleId = tostring(rules.RuleId),  
+         ruleStatus = tostring(rules.Status),  
+         ruleOrder = toint(rules.Order),  
+         ruleItem = tostring(rules.RuleItem),  
+         ruleCondition = tostring(rules.Condition),  
+         ruleOutputs = rules.Output  
+| mv-expand ruleOutputs to typeof(dynamic)  
+| extend outputQueueId = tostring(ruleOutputs.Id),  
+         outputQueueName = tostring(ruleOutputs.DisplayName)  
+| where workItem == workitemID  
+| where subscenario contains "RouteToQueue"  
+| project timestamp, workItem, subscenario, ruleSetName, ruleHitPolicy, ruleItem, ruleStatus, ruleOrder, ruleCondition, outputQueueName, outputQueueId,   routingError  
+| order by timestamp asc 

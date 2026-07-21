@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8" />
+<title>Conversation Diagnostics — Settings</title>
+<style>
+  body { font-family: "Segoe UI", sans-serif; font-size: 13px; color: #242424; margin: 0; padding: 20px; background: #faf9f8; }
+  .card { background: #fff; border: 1px solid #e0e0e0; border-radius: 8px; padding: 20px; max-width: 640px; }
+  h1 { font-size: 18px; margin: 0 0 4px; }
+  .sub { color: #616161; margin-bottom: 16px; }
+  label { display: block; font-weight: 600; margin: 12px 0 4px; }
+  input, select { width: 100%; padding: 7px 8px; border: 1px solid #8a8886; border-radius: 4px; box-sizing: border-box; }
+  .hint { color: #616161; font-size: 12px; margin-top: 2px; }
+  .actions { margin-top: 20px; display: flex; gap: 8px; }
+  button { padding: 7px 16px; border-radius: 4px; border: none; cursor: pointer; }
+  .primary { background: #0f6cbd; color: #fff; }
+  .secondary { background: #f3f2f1; }
+  #status { margin-top: 12px; padding: 8px; border-radius: 4px; display: none; }
+  .ok { background: #f1faf1; border-left: 3px solid #107c10; }
+  .fail { background: #fdf3f4; border-left: 3px solid #c50f1f; }
+</style>
+</head>
+<body>
+<div class="card">
+  <h1>Conversation Diagnostics — Settings</h1>
+  <div class="sub">Connect this environment to the Azure telemetry that stores conversation diagnostics. Users of the dashboards never need Azure access; a server-side app registration does the querying.</div>
+
+  <label for="tenantId">Entra tenant id</label>
+  <input id="tenantId" data-var="crd_TenantId" />
+
+  <label for="clientId">App registration client id</label>
+  <input id="clientId" data-var="crd_ClientId" />
+  <div class="hint">Grant this app "Reader" on the App Insights resource or Log Analytics workspace.</div>
+
+  <label for="targetType">Telemetry target</label>
+  <select id="targetType" data-var="crd_TargetType">
+    <option value="AppInsights">Application Insights (query by App ID)</option>
+    <option value="LogAnalytics">Log Analytics workspace (query by Workspace ID)</option>
+  </select>
+
+  <label for="appId">Application Insights App ID</label>
+  <input id="appId" data-var="crd_AppInsightsAppId" />
+
+  <label for="workspaceId">Log Analytics Workspace ID</label>
+  <input id="workspaceId" data-var="crd_WorkspaceId" />
+
+  <label for="secretPlain">Client secret (fallback)</label>
+  <input id="secretPlain" data-var="crd_ClientSecretPlain" type="password" />
+  <div class="hint">Preferred: leave this empty and configure the Key Vault-backed secret variable <code>crd_ClientSecret</code> instead. This plain value is stored in Dataverse and readable by admins.</div>
+
+  <div class="actions">
+    <button class="primary" id="save">Save</button>
+    <button class="secondary" id="test">Test connection</button>
+  </div>
+  <div id="status"></div>
+</div>
+
+<script>
+const Xrm = window.parent.Xrm;
+const api = (path, opts) => fetch(Xrm.Utility.getGlobalContext().getClientUrl() + "/api/data/v9.2/" + path, Object.assign({
+  headers: { "Accept": "application/json", "Content-Type": "application/json", "OData-MaxVersion": "4.0", "OData-Version": "4.0" }
+}, opts)).then(r => { if (!r.ok && r.status !== 204) return r.json().then(e => { throw new Error(e.error?.message || r.status); }); return r.status === 204 ? null : r.json(); });
+
+const fields = Array.from(document.querySelectorAll("[data-var]"));
+
+async function load() {
+  const names = fields.map(f => `'${f.dataset.var}'`).join(",");
+  const defs = await api(`environmentvariabledefinitions?$filter=Microsoft.Dynamics.CRM.In(PropertyName='schemaname',PropertyValues=[${fields.map(f => `'${f.dataset.var}'`).join(",")}])&$select=schemaname,defaultvalue,environmentvariabledefinitionid&$expand=environmentvariabledefinition_environmentvariablevalue($select=value,environmentvariablevalueid)`);
+  for (const f of fields) {
+    const def = defs.value.find(d => d.schemaname === f.dataset.var);
+    if (!def) continue;
+    f.dataset.defId = def.environmentvariabledefinitionid;
+    const val = def.environmentvariabledefinition_environmentvariablevalue[0];
+    if (val) { f.dataset.valId = val.environmentvariablevalueid; f.value = val.value || ""; }
+    else if (def.defaultvalue) f.value = def.defaultvalue;
+  }
+}
+
+async function save() {
+  for (const f of fields) {
+    if (!f.dataset.defId) continue;
+    const body = JSON.stringify({ value: f.value });
+    if (f.dataset.valId) {
+      await api(`environmentvariablevalues(${f.dataset.valId})`, { method: "PATCH", body });
+    } else if (f.value) {
+      const created = await api("environmentvariablevalues", { method: "POST", body: JSON.stringify({
+        value: f.value, "EnvironmentVariableDefinitionId@odata.bind": `/environmentvariabledefinitions(${f.dataset.defId})`
+      }), headers: { "Accept": "application/json", "Content-Type": "application/json", "Prefer": "return=representation" }});
+      f.dataset.valId = created.environmentvariablevalueid;
+    }
+  }
+  show(true, "Settings saved.");
+}
+
+async function test() {
+  show(true, "Testing…");
+  try {
+    const result = await api("crd_TestDiagnosticsConnection", { method: "POST", body: "{}" });
+    show(result.Success, result.Message);
+  } catch (e) { show(false, e.message); }
+}
+
+function show(ok, msg) {
+  const s = document.getElementById("status");
+  s.className = ok ? "ok" : "fail"; s.style.display = "block"; s.textContent = msg;
+}
+
+document.getElementById("save").addEventListener("click", () => save().catch(e => show(false, e.message)));
+document.getElementById("test").addEventListener("click", test);
+load().catch(e => show(false, e.message));
+</script>
+</body>
+</html>

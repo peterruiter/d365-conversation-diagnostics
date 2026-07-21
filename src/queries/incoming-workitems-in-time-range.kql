@@ -1,0 +1,43 @@
+// Source: Microsoft FastTrack Conversation Diagnostics dashboard
+// Tile: Incoming workitems in time range
+
+// Extract final identified queue from RTQ events
+let FinalQueueMapping = materialize(
+    traces  
+    | where timestamp >= _startTime and timestamp <=_endTime  // Ensures _timeRange is used in a table
+    | extend customDim = parse_json(customDimensions)
+    | extend workItem = tostring(customDim["powerplatform.analytics.resource.id"]), 
+             subscenario = tostring(customDim["powerplatform.analytics.subscenario"]),
+             queueInfoRaw = tostring(customDim["omnichannel.result"])
+    | where subscenario == "RouteToQueue" and isnotempty(queueInfoRaw)
+    | extend queueInfo = parse_json(queueInfoRaw)
+    | project workItem, finalQueueId = tostring(queueInfo.Id), finalQueueName = tostring(queueInfo.DisplayName)
+    | summarize finalQueueId = any(finalQueueId), finalQueueName = any(finalQueueName) by workItem
+);
+
+// Main query to track conversation flow
+traces  
+| where timestamp >= _startTime and timestamp <=_endTime
+| extend customDim = parse_json(customDimensions)
+| extend channelType = tostring(customDim["omnichannel.channel.type"])
+| extend scenario = tostring(customDim["powerplatform.analytics.scenario"])
+| extend workItem = tostring(customDim["powerplatform.analytics.resource.id"]), 
+         subscenario = tostring(customDim["powerplatform.analytics.subscenario"])
+| where workItem !in ("", "00000000-0000-0000-0000-000000000000")
+      and scenario == "ConversationDiagnosticsScenario"
+| extend channelTypeForConversation = iff(subscenario == "ConversationCreated", channelType, "")
+| project timestamp, workItem, subscenario, channelTypeForConversation
+| sort by timestamp asc  
+| summarize 
+    conversationFlow = make_list(subscenario), 
+    lastUpdatedTime = max(timestamp),  
+    channelType = arg_max(channelTypeForConversation,timestamp)
+  by workItem
+| project 
+    workItem, 
+    lastUpdatedTime, 
+    channelType,
+    conversationFlow = strcat_array(conversationFlow, " -> ")
+| join kind=leftouter (FinalQueueMapping) on workItem  
+| project workItem, lastUpdatedTime, channelType, finalQueueName, conversationFlow
+| sort by lastUpdatedTime desc

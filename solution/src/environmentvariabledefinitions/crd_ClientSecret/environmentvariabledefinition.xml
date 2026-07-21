@@ -1,0 +1,8 @@
+<environmentvariabledefinition schemaname="crd_ClientSecret">
+  <displayname default="Client Secret (Key Vault)">
+    <label description="Client Secret (Key Vault)" languagecode="1033" />
+  </displayname>
+  <isrequired>0</isrequired>
+  <secretstore>0</secretstore>
+  <type>100000005</type>
+</environmentvariabledefinition>

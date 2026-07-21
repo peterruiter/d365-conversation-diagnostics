@@ -1,0 +1,15 @@
+// Source: Microsoft FastTrack Conversation Diagnostics dashboard
+// Tile: Agent Handle Time Took Longer Than 5 Minutes
+traces
+| where timestamp >= _startTime and timestamp <= _endTime
+| extend customDim = parse_json(customDimensions)
+| extend conversationId = tostring(customDim["powerplatform.analytics.resource.id"]),
+         subscenario = tostring(customDim["powerplatform.analytics.subscenario"])
+| where subscenario in ("CSRAccepted", "CustomerEndedConversation","CSREndedConversation") 
+| project timestamp, conversationId, subscenario
+| sort by conversationId, timestamp asc
+| extend prevTimestamp = prev(timestamp), prevSubscenario = prev(subscenario)
+| where prevSubscenario == "CSRAccepted" and (subscenario == "CustomerEndedConversation" or subscenario == "CSREndedConversation")
+| extend handleTime = timestamp - prevTimestamp
+| where handleTime > 5min
+| project conversationId, handleTime

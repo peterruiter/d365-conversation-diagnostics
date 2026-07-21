@@ -1,0 +1,13 @@
+// Source: Microsoft FastTrack Conversation Diagnostics dashboard
+// Tile: Overflow Triggered for Conversations
+traces
+| where timestamp >= _startTime and timestamp <= _endTime
+| extend customDim = parse_json(customDimensions)
+| extend conversationId = tostring(customDim["powerplatform.analytics.resource.id"]),
+         subscenario = tostring(customDim["powerplatform.analytics.subscenario"])
+| extend omnichannelAdditionalInfo = tostring((customDim["omnichannel.additional_info"]))
+| extend scenario = tostring(customDim["powerplatform.analytics.scenario"])
+| where scenario == "ConversationDiagnosticsScenario"
+| where omnichannelAdditionalInfo contains "OverflowTrigger"
+| project timestamp, conversationId, subscenario, omnichannelAdditionalInfo
+//add queue, and action
