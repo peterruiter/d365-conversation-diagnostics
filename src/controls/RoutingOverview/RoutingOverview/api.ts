@@ -1,4 +1,4 @@
-/* Thin wrapper around the crd_* Custom APIs. Parses the Azure query API
+/* Thin wrapper around the pwr_* Custom APIs. Parses the Azure query API
    tables/rows payload into arrays of plain objects. */
 
 export interface DiagnosticsEvent {
@@ -45,7 +45,7 @@ function execute(apiName: string, parameters: Record<string, { typeName: string;
 }
 
 export async function getConversationDiagnostics(conversationId: string, hours = 720): Promise<DiagnosticsEvent[]> {
-  const result = await execute("crd_GetConversationDiagnostics", {
+  const result = await execute("pwr_GetConversationDiagnostics", {
     ConversationId: { typeName: "Edm.String", value: conversationId },
     TimeRangeHours: { typeName: "Edm.Int32", value: hours }
   });
@@ -64,10 +64,42 @@ export async function runNamedQuery(queryKey: string, hours: number, workItemId?
     TimeRangeHours: { typeName: "Edm.Int32", value: hours }
   };
   if (workItemId) params.WorkItemId = { typeName: "Edm.String", value: workItemId };
-  const result = await execute("crd_ExecuteDiagnosticsQuery", params);
+  const result = await execute("pwr_ExecuteDiagnosticsQuery", params);
   return rowsToObjects(result.ResultJson);
 }
 
 function safeParse(s: string): Record<string, unknown> {
   try { return JSON.parse(s); } catch { return {}; }
+}
+
+/** Reads a single environment variable value (current value, else default). */
+export async function getEnvironmentVariable(schemaName: string): Promise<string> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const webApi = (window.parent as any).Xrm?.WebApi ?? (window as any).Xrm?.WebApi;
+  if (!webApi) return "";
+  try {
+    const result = await webApi.retrieveMultipleRecords(
+      "environmentvariabledefinition",
+      `?$select=defaultvalue&$filter=schemaname eq '${schemaName}'` +
+      `&$expand=environmentvariabledefinition_environmentvariablevalue($select=value)`
+    );
+    const def = result.entities?.[0];
+    if (!def) return "";
+    const current = def.environmentvariabledefinition_environmentvariablevalue?.[0]?.value as string | undefined;
+    return (current && current.trim()) || (def.defaultvalue as string) || "";
+  } catch {
+    return "";
+  }
+}
+
+/** Current model-driven app id, needed to build a custom page URL. */
+export function getAppId(): string {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const xrm = (window.parent as any).Xrm ?? (window as any).Xrm;
+    const fromApi = xrm?.Utility?.getGlobalContext?.()?.getCurrentAppProperties?.();
+    if (fromApi && typeof fromApi.then !== "function" && fromApi.appId) return String(fromApi.appId);
+  } catch { /* fall through to the URL */ }
+  const fromUrl = new URLSearchParams(window.location.search).get("appid");
+  return fromUrl ?? "";
 }

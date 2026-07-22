@@ -8,26 +8,20 @@ One app registration does all querying. Users never get Azure access.
 3. Certificates & secrets → **New client secret**. Copy the value.
 
 ## 2. Grant read access to telemetry
-Pick the one that matches your setup:
-
-**Application Insights (classic query API, recommended)**
-1. Open the App Insights resource that receives the Dynamics conversation diagnostics export.
+1. Open the Application Insights resource that receives the Dynamics conversation diagnostics export.
 2. Access control (IAM) → Add role assignment → **Reader** → select the app registration.
-3. Note the **App ID** under API Access (not the resource id, not the instrumentation key).
+3. Go to **API Access** and copy the **Application ID**. That is the value the solution needs — not the instrumentation key, not the Azure resource id.
 
-**Log Analytics workspace**
-1. Open the workspace behind your workspace-based App Insights resource.
-2. IAM → Add role assignment → **Log Analytics Reader** → select the app registration.
-3. Note the **Workspace ID** from the overview page.
+> The solution queries the Application Insights API only. The FastTrack KQL uses Application Insights schema (`traces`, `timestamp`, `customDimensions`). Querying the Log Analytics workspace API directly is not supported, because that surface uses different table and column names (`AppTraces`, `TimeGenerated`, `Properties`). If your telemetry is workspace-based, that is fine — the Application Insights API reads the same data.
 
 ## 3. Secret storage (pick one)
 **Preferred — Key Vault-backed secret environment variable**
 1. Store the client secret in Azure Key Vault.
 2. Grant the Dataverse service principal (`Microsoft.PowerPlatform` / Dataverse) `Get` on secrets, or use RBAC `Key Vault Secrets User`.
-3. In your environment, set the secret environment variable `crd_ClientSecret` to the Key Vault reference (subscription id, resource group, vault name, secret name).
+3. In your environment, set the secret environment variable `pwr_ClientSecret` to the Key Vault reference (subscription id, resource group, vault name, secret name).
 
 **Fallback — plain environment variable**
-Set `crd_ClientSecretPlain` on the settings page. The value sits in Dataverse and is readable by admins. Use only for demos and dev.
+Set `pwr_ClientSecretPlain` on the settings page. The value sits in Dataverse and is readable by admins. Use only for demos and dev.
 
 ## 4. Fill the settings page
-Open **Diagnostics Settings** in the admin app and enter tenant id, client id, target type, and the App ID or Workspace ID. Use **Test connection** — it runs `traces | take 1` end to end and reports the exact failure if something is off.
+Open **Diagnostics Settings** in the admin app and enter tenant id, client id and the Application Insights App ID. Use **Test connection** — it runs `traces | take 1` end to end and reports the exact failure if something is off.

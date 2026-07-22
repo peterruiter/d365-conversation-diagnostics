@@ -1,4 +1,4 @@
-<environmentvariabledefinition schemaname="crd_TenantId">
+<environmentvariabledefinition schemaname="pwr_TenantId">
   <displayname default="Tenant Id">
     <label description="Tenant Id" languagecode="1033" />
   </displayname>

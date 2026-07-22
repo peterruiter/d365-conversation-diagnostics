@@ -1,6 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <TargetFramework>net462</TargetFramework>
+    <AssemblyName>ConversationDiagnosticsPlugins</AssemblyName>
     <LangVersion>latest</LangVersion>
     <SignAssembly>true</SignAssembly>
     <AssemblyOriginatorKeyFile>ConversationDiagnostics.snk</AssemblyOriginatorKeyFile>
@@ -8,6 +9,14 @@
     <Version>1.0.0</Version>
   </PropertyGroup>
   <ItemGroup>
+    <!-- Supplies .NET Framework reference assemblies as a NuGet package, so no
+         machine-wide targeting pack install is needed to build net462. -->
+    <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.3" PrivateAssets="All" />
     <PackageReference Include="Microsoft.CrmSdk.CoreAssemblies" Version="9.0.2.56" PrivateAssets="All" />
+  </ItemGroup>
+  <ItemGroup>
+    <!-- net462 does not reference these framework assemblies automatically. -->
+    <Reference Include="System.Net.Http" />
+    <Reference Include="System.Xml" />
   </ItemGroup>
 </Project>

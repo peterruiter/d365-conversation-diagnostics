@@ -1,31 +1,56 @@
 <?xml version="1.0" encoding="utf-8"?>
-<Project ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+<Project ToolsVersion="15.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <PropertyGroup>
     <PowerAppsTargetsPath>$(MSBuildExtensionsPath)\Microsoft\VisualStudio\v$(VisualStudioVersion)\PowerApps</PowerAppsTargetsPath>
   </PropertyGroup>
-  <Import Project="$(MSBuildExtensionsPath)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\Microsoft.Common.props')" />
+
+  <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" />
+  <Import Project="$(PowerAppsTargetsPath)\Microsoft.PowerApps.VisualStudio.Solution.props" Condition="Exists('$(PowerAppsTargetsPath)\Microsoft.PowerApps.VisualStudio.Solution.props')" />
+
   <PropertyGroup>
     <ProjectGuid>7f3a2f11-1111-4a1a-9a1a-00000000000a</ProjectGuid>
     <TargetFrameworkVersion>v4.6.2</TargetFrameworkVersion>
+    <!--Remove TargetFramework when this is available in 16.1-->
+    <TargetFramework>net462</TargetFramework>
+    <RestoreProjectStyle>PackageReference</RestoreProjectStyle>
+    <SolutionRootPath>src</SolutionRootPath>
+  </PropertyGroup>
+
+  <PropertyGroup>
     <SolutionPackageType>Both</SolutionPackageType>
     <SolutionPackageEnableLocalization>false</SolutionPackageEnableLocalization>
   </PropertyGroup>
-  <Import Project="$(PowerAppsTargetsPath)\Microsoft.PowerApps.VisualStudio.Solution.props" Condition="Exists('$(PowerAppsTargetsPath)\Microsoft.PowerApps.VisualStudio.Solution.props')" />
+
   <ItemGroup>
-    <ProjectReference Include="..\src\controls\ConversationAnalyzer\ConversationAnalyzer.pcfproj" />
-    <ProjectReference Include="..\src\controls\RoutingOverview\RoutingOverview.pcfproj" />
-    <ProjectReference Include="..\src\plugin\ConversationDiagnostics.Plugins\ConversationDiagnostics.Plugins.csproj" />
+    <PackageReference Include="Microsoft.PowerApps.MSBuild.Solution" Version="1.*" />
+    <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.3" PrivateAssets="All" />
   </ItemGroup>
+
   <ItemGroup>
     <ExcludeDirectories Include="$(MSBuildThisFileDirectory)\.gitignore" />
     <ExcludeDirectories Include="$(MSBuildThisFileDirectory)\bin\**" />
     <ExcludeDirectories Include="$(MSBuildThisFileDirectory)\obj\**" />
+    <ExcludeDirectories Include="$(MSBuildThisFileDirectory)\*.cdsproj" />
+    <ExcludeDirectories Include="$(MSBuildThisFileDirectory)\*.cdsproj.user" />
+    <ExcludeDirectories Include="$(MSBuildThisFileDirectory)\*.sln" />
   </ItemGroup>
+
   <ItemGroup>
-    <None Include="src\Other\Solution.xml" />
-    <None Include="src\Other\Customizations.xml" />
-    <None Include="src\Other\Relationships.xml" />
+    <None Include="$(MSBuildThisFileDirectory)\**" Exclude="@(ExcludeDirectories)" />
+    <Content Include="$(SolutionPackageZipFilePath)">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
   </ItemGroup>
-  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" Condition="!Exists('$(PowerAppsTargetsPath)\Microsoft.PowerApps.VisualStudio.Solution.targets')" />
+
+  <!-- PCF controls only. The plugin builds separately (build.ps1 builds it) and is
+       registered with its Custom APIs via deploy/register-customapis.ps1. Keeping the
+       plugin out of the cdsproj avoids the assembly-registration packaging traps in
+       build-tools issues #959 and #1232, and lets the dashboard solution pack cleanly. -->
+  <ItemGroup>
+    <ProjectReference Include="..\src\controls\ConversationAnalyzer\ConversationAnalyzer.pcfproj" />
+    <ProjectReference Include="..\src\controls\RoutingOverview\RoutingOverview.pcfproj" />
+  </ItemGroup>
+
+  <Import Project="$(MSBuildToolsPath)\Microsoft.Common.targets" />
   <Import Project="$(PowerAppsTargetsPath)\Microsoft.PowerApps.VisualStudio.Solution.targets" Condition="Exists('$(PowerAppsTargetsPath)\Microsoft.PowerApps.VisualStudio.Solution.targets')" />
 </Project>

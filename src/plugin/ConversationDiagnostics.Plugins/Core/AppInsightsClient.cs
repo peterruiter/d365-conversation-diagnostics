@@ -9,18 +9,17 @@ using Microsoft.Xrm.Sdk;
 namespace ConversationDiagnostics.Plugins.Core
 {
     /// <summary>
-    /// Executes KQL against the Application Insights query API or the Log Analytics query API
-    /// using client-credentials auth. Runs inside the Dataverse sandbox (outbound HTTPS only).
+    /// Executes KQL against the Application Insights query API using client-credentials auth.
+    /// Runs inside the Dataverse sandbox (outbound HTTPS only).
     /// </summary>
-    public sealed class LogAnalyticsClient
+    public sealed class AppInsightsClient
     {
-        private const string AppInsightsScope = "https://api.applicationinsights.io/.default";
-        private const string LogAnalyticsScope = "https://api.loganalytics.io/.default";
+        private const string Scope = "https://api.applicationinsights.io/.default";
 
         private readonly DiagnosticsConfig _config;
         private readonly ITracingService _trace;
 
-        public LogAnalyticsClient(DiagnosticsConfig config, ITracingService trace)
+        public AppInsightsClient(DiagnosticsConfig config, ITracingService trace)
         {
             _config = config;
             _trace = trace;
@@ -29,9 +28,7 @@ namespace ConversationDiagnostics.Plugins.Core
         public string ExecuteQuery(string kql, TimeSpan? timespan)
         {
             var token = AcquireToken();
-            string url = _config.Target == TargetType.AppInsights
-                ? $"https://api.applicationinsights.io/v1/apps/{_config.ResourceId}/query"
-                : $"https://api.loganalytics.io/v1/workspaces/{_config.ResourceId}/query";
+            string url = $"https://api.applicationinsights.io/v1/apps/{_config.AppId}/query";
 
             var payload = new Dictionary<string, string> { { "query", kql } };
             if (timespan.HasValue)
@@ -48,7 +45,7 @@ namespace ConversationDiagnostics.Plugins.Core
                 {
                     _trace.Trace("Query API returned {0}: {1}", (int)response.StatusCode, Truncate(content, 2000));
                     throw new InvalidPluginExecutionException(
-                        $"Conversation Diagnostics query failed ({(int)response.StatusCode}). Check the app registration permissions and resource id. Details: {Truncate(content, 500)}");
+                        $"Conversation Diagnostics query failed ({(int)response.StatusCode}). Check the app registration permissions and the Application Insights App ID. Details: {Truncate(content, 500)}");
                 }
                 return content;
             }
@@ -56,7 +53,6 @@ namespace ConversationDiagnostics.Plugins.Core
 
         private string AcquireToken()
         {
-            string scope = _config.Target == TargetType.AppInsights ? AppInsightsScope : LogAnalyticsScope;
             string url = $"https://login.microsoftonline.com/{_config.TenantId}/oauth2/v2.0/token";
 
             var form = new Dictionary<string, string>
@@ -64,7 +60,7 @@ namespace ConversationDiagnostics.Plugins.Core
                 { "grant_type", "client_credentials" },
                 { "client_id", _config.ClientId },
                 { "client_secret", _config.ClientSecret },
-                { "scope", scope }
+                { "scope", Scope }
             };
 
             using (var http = new HttpClient { Timeout = TimeSpan.FromSeconds(30) })

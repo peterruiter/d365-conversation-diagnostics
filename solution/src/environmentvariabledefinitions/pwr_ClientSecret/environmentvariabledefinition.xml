@@ -1,4 +1,4 @@
-<environmentvariabledefinition schemaname="crd_ClientSecret">
+<environmentvariabledefinition schemaname="pwr_ClientSecret">
   <displayname default="Client Secret (Key Vault)">
     <label description="Client Secret (Key Vault)" languagecode="1033" />
   </displayname>

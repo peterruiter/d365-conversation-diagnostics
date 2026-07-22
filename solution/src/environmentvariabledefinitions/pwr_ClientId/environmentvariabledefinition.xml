@@ -1,4 +1,4 @@
-<environmentvariabledefinition schemaname="crd_ClientId">
+<environmentvariabledefinition schemaname="pwr_ClientId">
   <displayname default="Client Id">
     <label description="Client Id" languagecode="1033" />
   </displayname>

@@ -11,14 +11,14 @@
     <Version>1.0.0.0</Version>
     <Managed>2</Managed>
     <Publisher>
-      <UniqueName>PeterRuiter</UniqueName>
+      <UniqueName>PowerPete</UniqueName>
       <LocalizedNames>
-        <LocalizedName description="Peter Ruiter" languagecode="1033" />
+        <LocalizedName description="PowerPete" languagecode="1033" />
       </LocalizedNames>
       <Descriptions />
       <EMailAddress xsi:nil="true"></EMailAddress>
       <SupportingWebsiteUrl xsi:nil="true"></SupportingWebsiteUrl>
-      <CustomizationPrefix>crd</CustomizationPrefix>
+      <CustomizationPrefix>pwr</CustomizationPrefix>
       <CustomizationOptionValuePrefix>68000</CustomizationOptionValuePrefix>
       <Addresses>
         <Address>

@@ -1,4 +1,4 @@
-<environmentvariabledefinition schemaname="crd_AppInsightsAppId">
+<environmentvariabledefinition schemaname="pwr_AppInsightsAppId">
   <displayname default="App Insights App Id">
     <label description="App Insights App Id" languagecode="1033" />
   </displayname>

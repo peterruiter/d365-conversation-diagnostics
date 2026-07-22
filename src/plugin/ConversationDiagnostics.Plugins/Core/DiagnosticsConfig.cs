@@ -4,23 +4,27 @@ using Microsoft.Xrm.Sdk.Query;
 
 namespace ConversationDiagnostics.Plugins.Core
 {
-    public enum TargetType { AppInsights, LogAnalytics }
-
+    /// <summary>
+    /// Connection settings for the Application Insights query API.
+    /// The queries in <see cref="QueryLibrary"/> are written in Application Insights
+    /// schema (traces / timestamp / customDimensions), so Application Insights is the
+    /// only supported query surface. Querying the Log Analytics workspace API directly
+    /// would need a parallel query set in workspace schema (AppTraces / TimeGenerated / Properties).
+    /// </summary>
     public sealed class DiagnosticsConfig
     {
         public string TenantId { get; set; }
         public string ClientId { get; set; }
         public string ClientSecret { get; set; }
-        public TargetType Target { get; set; }
-        /// <summary>Application Insights App ID (Target = AppInsights) or Log Analytics Workspace ID (Target = LogAnalytics).</summary>
-        public string ResourceId { get; set; }
+        /// <summary>Application Insights App ID, from the resource's API Access blade.</summary>
+        public string AppId { get; set; }
 
         public void Validate()
         {
-            if (string.IsNullOrWhiteSpace(TenantId)) throw new InvalidPluginExecutionException("Conversation Diagnostics: environment variable crd_TenantId is not set. Configure it in the Diagnostics Settings page.");
-            if (string.IsNullOrWhiteSpace(ClientId)) throw new InvalidPluginExecutionException("Conversation Diagnostics: environment variable crd_ClientId is not set.");
-            if (string.IsNullOrWhiteSpace(ClientSecret)) throw new InvalidPluginExecutionException("Conversation Diagnostics: no client secret found. Set the Key Vault-backed secret variable crd_ClientSecret, or the fallback crd_ClientSecretPlain.");
-            if (string.IsNullOrWhiteSpace(ResourceId)) throw new InvalidPluginExecutionException("Conversation Diagnostics: set crd_AppInsightsAppId or crd_WorkspaceId depending on crd_TargetType.");
+            if (string.IsNullOrWhiteSpace(TenantId)) throw new InvalidPluginExecutionException("Conversation Diagnostics: environment variable pwr_TenantId is not set. Configure it in the Diagnostics Settings page.");
+            if (string.IsNullOrWhiteSpace(ClientId)) throw new InvalidPluginExecutionException("Conversation Diagnostics: environment variable pwr_ClientId is not set.");
+            if (string.IsNullOrWhiteSpace(ClientSecret)) throw new InvalidPluginExecutionException("Conversation Diagnostics: no client secret found. Set the Key Vault-backed secret variable pwr_ClientSecret, or the fallback pwr_ClientSecretPlain.");
+            if (string.IsNullOrWhiteSpace(AppId)) throw new InvalidPluginExecutionException("Conversation Diagnostics: environment variable pwr_AppInsightsAppId is not set. Use the Application Insights App ID from the resource's API Access blade (not the instrumentation key or the Azure resource id).");
         }
     }
 
@@ -30,24 +34,16 @@ namespace ConversationDiagnostics.Plugins.Core
         {
             var cfg = new DiagnosticsConfig
             {
-                TenantId = GetEnvVar(service, "crd_TenantId"),
-                ClientId = GetEnvVar(service, "crd_ClientId")
+                TenantId = GetEnvVar(service, "pwr_TenantId"),
+                ClientId = GetEnvVar(service, "pwr_ClientId"),
+                AppId = GetEnvVar(service, "pwr_AppInsightsAppId")
             };
 
-            var targetType = GetEnvVar(service, "crd_TargetType") ?? "AppInsights";
-            cfg.Target = string.Equals(targetType, "LogAnalytics", StringComparison.OrdinalIgnoreCase)
-                ? TargetType.LogAnalytics
-                : TargetType.AppInsights;
-
-            cfg.ResourceId = cfg.Target == TargetType.AppInsights
-                ? GetEnvVar(service, "crd_AppInsightsAppId")
-                : GetEnvVar(service, "crd_WorkspaceId");
-
             // Preferred: Key Vault-backed secret environment variable.
-            cfg.ClientSecret = GetSecretEnvVar(service, "crd_ClientSecret");
+            cfg.ClientSecret = GetSecretEnvVar(service, "pwr_ClientSecret");
             // Fallback: plain string environment variable (discouraged, documented as such).
             if (string.IsNullOrWhiteSpace(cfg.ClientSecret))
-                cfg.ClientSecret = GetEnvVar(service, "crd_ClientSecretPlain");
+                cfg.ClientSecret = GetEnvVar(service, "pwr_ClientSecretPlain");
 
             cfg.Validate();
             return cfg;

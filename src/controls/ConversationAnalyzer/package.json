@@ -1,18 +1,26 @@
 {
-  "name": "crd-conversation-analyzer",
+  "name": "pwr-conversation-analyzer",
   "version": "1.0.0",
   "private": true,
   "scripts": {
     "build": "pcf-scripts build",
-    "start": "pcf-scripts start watch",
+    "clean": "pcf-scripts clean",
+    "lint": "pcf-scripts lint",
     "rebuild": "pcf-scripts rebuild",
-    "lint": "eslint ."
+    "start": "pcf-scripts start",
+    "start:watch": "pcf-scripts start watch",
+    "refreshTypes": "pcf-scripts refreshTypes"
   },
   "devDependencies": {
-    "@types/powerapps-component-framework": "^1.3.15",
+    "@eslint/js": "^9.25.1",
+    "@microsoft/eslint-plugin-power-apps": "^0.2.51",
+    "@types/node": "^18.19.86",
+    "@types/powerapps-component-framework": "^1.3.16",
+    "eslint-plugin-promise": "^7.1.0",
+    "globals": "^15.15.0",
     "pcf-scripts": "^1",
     "pcf-start": "^1",
-    "typescript": "^5.4.5",
-    "eslint": "^9"
+    "typescript": "^5.8.3",
+    "typescript-eslint": "8.44.0"
   }
 }

@@ -1,4 +1,4 @@
-<environmentvariabledefinition schemaname="crd_ClientSecretPlain">
+<environmentvariabledefinition schemaname="pwr_ClientSecretPlain">
   <displayname default="Client Secret (plain fallback)">
     <label description="Client Secret (plain fallback)" languagecode="1033" />
   </displayname>

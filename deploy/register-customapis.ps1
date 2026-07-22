@@ -9,7 +9,10 @@ Usage:    ./register-customapis.ps1 -EnvironmentUrl https://yourorg.crm4.dynamic
 param(
     [Parameter(Mandatory = $true)][string]$EnvironmentUrl,
     [string]$SolutionUniqueName = "ConversationDiagnostics",
-    [string]$PluginAssemblyName = "ConversationDiagnostics.Plugins"
+    [string]$PluginAssemblyName = "ConversationDiagnosticsPlugins",
+    # Custom API parameter types are immutable after creation. Use -Force to delete
+    # and recreate the APIs when a parameter was registered with the wrong type.
+    [switch]$Force
 )
 
 $ErrorActionPreference = "Stop"
@@ -30,32 +33,47 @@ function Invoke-DataversePost($path, $body) {
 
 # --- Locate plugin types ---
 $assembly = (Invoke-DataverseGet "pluginassemblies?`$filter=name eq '$PluginAssemblyName'&`$select=pluginassemblyid").value[0]
-if (-not $assembly) { throw "Plugin assembly '$PluginAssemblyName' not found. Import the solution first." }
+if (-not $assembly) {
+    # Show what is actually registered so the fix is obvious.
+    $candidates = (Invoke-DataverseGet "pluginassemblies?`$select=name&`$filter=ismanaged eq false").value |
+        Where-Object { $_.name -like "*ConversationDiagnostics*" -or $_.name -like "*Diagnostics*" } |
+        Select-Object -ExpandProperty name
+    $hint = if ($candidates) { "Registered assemblies that look related: $($candidates -join ', '). Re-run with -PluginAssemblyName <name>." }
+            else { "No similarly named assembly is registered. Run deploy/push-plugin.ps1 -Register first." }
+    throw "Plugin assembly '$PluginAssemblyName' not found. $hint"
+}
+Write-Host "Found assembly '$PluginAssemblyName' ($($assembly.pluginassemblyid))" -ForegroundColor Cyan
 $types = (Invoke-DataverseGet "plugintypes?`$filter=_pluginassemblyid_value eq $($assembly.pluginassemblyid)&`$select=plugintypeid,typename").value
-function TypeId($typeName) { ($types | Where-Object typename -eq $typeName).plugintypeid }
+function TypeId($typeName) {
+    $id = ($types | Where-Object typename -eq $typeName).plugintypeid
+    if (-not $id) {
+        throw "Plugin type '$typeName' not found in assembly '$PluginAssemblyName'. Types present: $(($types | Select-Object -ExpandProperty typename) -join ', ')"
+    }
+    return $id
+}
 
 $apis = @(
     @{
-        UniqueName = "crd_ExecuteDiagnosticsQuery"; DisplayName = "Execute Diagnostics Query"
+        UniqueName = "pwr_ExecuteDiagnosticsQuery"; DisplayName = "Execute Diagnostics Query"
         PluginType = "ConversationDiagnostics.Plugins.ExecuteDiagnosticsQueryPlugin"
         Inputs = @(
-            @{ UniqueName = "QueryKey"; Type = 10; Optional = $false },     # 10 = String
-            @{ UniqueName = "TimeRangeHours"; Type = 6; Optional = $true }, # 6  = Integer
+            @{ UniqueName = "QueryKey"; Type = 10; Optional = $false },      # 10 = String
+            @{ UniqueName = "TimeRangeHours"; Type = 7; Optional = $true },  # 7 = Integer (6 is Float!)
             @{ UniqueName = "WorkItemId"; Type = 10; Optional = $true }
         )
         Outputs = @(@{ UniqueName = "ResultJson"; Type = 10 })
     },
     @{
-        UniqueName = "crd_GetConversationDiagnostics"; DisplayName = "Get Conversation Diagnostics"
+        UniqueName = "pwr_GetConversationDiagnostics"; DisplayName = "Get Conversation Diagnostics"
         PluginType = "ConversationDiagnostics.Plugins.GetConversationDiagnosticsPlugin"
         Inputs = @(
             @{ UniqueName = "ConversationId"; Type = 10; Optional = $false },
-            @{ UniqueName = "TimeRangeHours"; Type = 6; Optional = $true }
+            @{ UniqueName = "TimeRangeHours"; Type = 7; Optional = $true }   # 7 = Integer (6 is Float!)
         )
         Outputs = @(@{ UniqueName = "EventsJson"; Type = 10 })
     },
     @{
-        UniqueName = "crd_TestDiagnosticsConnection"; DisplayName = "Test Diagnostics Connection"
+        UniqueName = "pwr_TestDiagnosticsConnection"; DisplayName = "Test Diagnostics Connection"
         PluginType = "ConversationDiagnostics.Plugins.TestConnectionPlugin"
         Inputs = @()
         Outputs = @(@{ UniqueName = "Success"; Type = 0 }, @{ UniqueName = "Message"; Type = 10 }) # 0 = Boolean
@@ -64,7 +82,19 @@ $apis = @(
 
 foreach ($api in $apis) {
     $existing = (Invoke-DataverseGet "customapis?`$filter=uniquename eq '$($api.UniqueName)'&`$select=customapiid").value
-    if ($existing.Count -gt 0) { Write-Host "Skipping $($api.UniqueName) (exists)"; continue }
+    if ($existing.Count -gt 0) {
+        if (-not $Force) { Write-Host "Skipping $($api.UniqueName) (exists). Use -Force to recreate."; continue }
+
+        Write-Host "Deleting $($api.UniqueName) and its parameters..." -ForegroundColor Yellow
+        $apiId = $existing[0].customapiid
+        foreach ($p in (Invoke-DataverseGet "customapirequestparameters?`$filter=_customapiid_value eq $apiId&`$select=customapirequestparameterid").value) {
+            Invoke-RestMethod -Uri "$base/customapirequestparameters($($p.customapirequestparameterid))" -Headers $headers -Method Delete | Out-Null
+        }
+        foreach ($p in (Invoke-DataverseGet "customapiresponseproperties?`$filter=_customapiid_value eq $apiId&`$select=customapiresponsepropertyid").value) {
+            Invoke-RestMethod -Uri "$base/customapiresponseproperties($($p.customapiresponsepropertyid))" -Headers $headers -Method Delete | Out-Null
+        }
+        Invoke-RestMethod -Uri "$base/customapis($apiId)" -Headers $headers -Method Delete | Out-Null
+    }
 
     $body = @{
         uniquename = $api.UniqueName; name = $api.DisplayName; displayname = $api.DisplayName

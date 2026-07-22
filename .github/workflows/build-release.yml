@@ -24,14 +24,17 @@ jobs:
 
       - name: Install PCF dependencies
         run: |
-          npm ci --prefix src/controls/ConversationAnalyzer
-          npm ci --prefix src/controls/RoutingOverview
+          npm install --prefix src/controls/ConversationAnalyzer
+          npm install --prefix src/controls/RoutingOverview
 
       - name: Generate strong-name key
         shell: pwsh
         run: |
-          if (-not (Test-Path "src/plugin/ConversationDiagnostics.Plugins/ConversationDiagnostics.snk")) {
-            & "$env:ProgramFiles(x86)\Microsoft SDKs\Windows\v10.0A\bin\NETFX 4.8 Tools\sn.exe" -k src/plugin/ConversationDiagnostics.Plugins/ConversationDiagnostics.snk
+          $snk = "src/plugin/ConversationDiagnostics.Plugins/ConversationDiagnostics.snk"
+          if (-not (Test-Path $snk)) {
+            $rsa = [System.Security.Cryptography.RSACryptoServiceProvider]::new(1024)
+            [System.IO.File]::WriteAllBytes($snk, $rsa.ExportCspBlob($true))
+            $rsa.Dispose()
           }
 
       - name: Build solution (managed + unmanaged)

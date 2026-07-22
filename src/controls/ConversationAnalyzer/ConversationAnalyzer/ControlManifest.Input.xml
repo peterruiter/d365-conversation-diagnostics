@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <manifest>
-  <control namespace="ConversationDiagnostics" constructor="ConversationAnalyzer" version="1.0.0"
+  <control namespace="ConversationDiagnostics" constructor="ConversationAnalyzer" version="1.0.3"
            display-name-key="Conversation Analyzer"
            description-key="Timeline and deterministic explanation of unified routing decisions for a single conversation."
            control-type="standard">

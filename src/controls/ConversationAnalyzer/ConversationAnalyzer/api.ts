@@ -1,4 +1,4 @@
-/* Thin wrapper around the crd_* Custom APIs. Parses the Azure query API
+/* Thin wrapper around the pwr_* Custom APIs. Parses the Azure query API
    tables/rows payload into arrays of plain objects. */
 
 export interface DiagnosticsEvent {
@@ -45,7 +45,7 @@ function execute(apiName: string, parameters: Record<string, { typeName: string;
 }
 
 export async function getConversationDiagnostics(conversationId: string, hours = 720): Promise<DiagnosticsEvent[]> {
-  const result = await execute("crd_GetConversationDiagnostics", {
+  const result = await execute("pwr_GetConversationDiagnostics", {
     ConversationId: { typeName: "Edm.String", value: conversationId },
     TimeRangeHours: { typeName: "Edm.Int32", value: hours }
   });
@@ -64,7 +64,7 @@ export async function runNamedQuery(queryKey: string, hours: number, workItemId?
     TimeRangeHours: { typeName: "Edm.Int32", value: hours }
   };
   if (workItemId) params.WorkItemId = { typeName: "Edm.String", value: workItemId };
-  const result = await execute("crd_ExecuteDiagnosticsQuery", params);
+  const result = await execute("pwr_ExecuteDiagnosticsQuery", params);
   return rowsToObjects(result.ResultJson);
 }
 
