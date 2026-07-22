@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <manifest>
-  <control namespace="ConversationDiagnostics" constructor="RoutingOverview" version="1.0.3"
+  <control namespace="ConversationDiagnostics" constructor="RoutingOverview" version="1.0.2"
            display-name-key="Routing Overview"
            description-key="Unified routing diagnostics overview: incoming work items with cross-filtered classification, queue routing, assignment and timeline panels."
            control-type="standard">

@@ -6,8 +6,12 @@ import { extractConversationId, GUID_RE } from "./idParser";
 /* Conversation Analyzer
    Hosts in three places with the same code:
    1. Custom page "Conversation Analyzer" (search box visible)
-   2. Productivity pane tool in Customer Service workspace (best-effort session resolution)
-   3. Deep link from the Routing Overview page (?pwr_id=<guid>)                        */
+   2. Productivity pane tool in Customer Service workspace
+   3. Opened directly with ?pwr_id=<guid> where the host allows it
+
+   There is deliberately no session auto-detection: Microsoft documents that custom
+   productivity tools have no supported access to session context, and the attempts
+   that appeared to work were unreliable. Paste the id or the conversation URL.       */
 
 export class ConversationAnalyzer implements ComponentFramework.StandardControl<IInputs, IOutputs> {
   private container!: HTMLDivElement;
@@ -20,8 +24,8 @@ export class ConversationAnalyzer implements ComponentFramework.StandardControl<
 
     const bound = context.parameters.conversationId?.raw ?? "";
     const fromUrl = new URLSearchParams(window.location.search).get("pwr_id") ?? "";
-    const resolved = bound || fromUrl || this.resolveFromSession();
-    if (resolved) this.load(resolved);
+    const resolved = bound || fromUrl;
+    if (resolved) void this.load(resolved);
   }
 
   public updateView(context: ComponentFramework.Context<IInputs>): void {
@@ -32,84 +36,13 @@ export class ConversationAnalyzer implements ComponentFramework.StandardControl<
   public getOutputs(): IOutputs { return {}; }
   public destroy(): void { /* nothing to clean up */ }
 
-  /* Best-effort resolution of the conversation id from the hosting session.
-     Microsoft documents that custom productivity tools are not contextually bound to the
-     session and have no supported mechanism to read session context, so none of this is
-     guaranteed. It works often enough to be worth trying; the search box is the fallback.
-
-     The pane may be iframed, so every candidate window is probed, not just window.parent.
-     A session id is NOT a conversation id - only the session context carries the live
-     work item, so sessionId is never used as an answer. */
-  private resolveFromSession(): string {
-    for (const win of this.candidateWindows()) {
-      try {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const w = win as any;
-        const session =
-          w.Xrm?.App?.sessions?.getFocusedSession?.() ??
-          w.Microsoft?.Apm?.getFocusedSession?.();
-        if (!session) continue;
-
-        const ctx = typeof session.getContext === "function" ? session.getContext() : null;
-        if (!ctx) continue;
-
-        const id = this.idFromSessionContext(ctx);
-        if (id) return id;
-      } catch { /* cross-origin or no session API on this window */ }
-    }
-    return "";
-  }
-
-  private candidateWindows(): Window[] {
-    const list: Window[] = [];
-    const push = (w: Window | null | undefined) => { if (w && !list.includes(w)) list.push(w); };
-    push(window);
-    push(window.parent);
-    try { push(window.top); } catch { /* cross-origin top */ }
-    try { push(window.parent?.parent); } catch { /* ignore */ }
-    return list;
-  }
-
-  /* Session context shapes differ by channel and release, so check the documented
-     spots and then sweep any nested value that looks like a live work item id. */
-  private idFromSessionContext(ctx: Record<string, unknown>): string {
-    const direct = [
-      (ctx as Record<string, string>).liveWorkItemId,
-      (ctx as Record<string, string>).LiveWorkItemId,
-      (ctx as Record<string, string>).conversationId,
-      ((ctx.templateParameters as Record<string, string>) ?? {}).liveWorkItemId,
-      ((ctx.templateParameters as Record<string, string>) ?? {}).entityId,
-      ((ctx.customerName as Record<string, string>) ?? {}).liveWorkItemId
-    ];
-    for (const c of direct) {
-      const v = typeof c === "string" ? c.replace(/[{}]/g, "") : "";
-      if (GUID_RE.test(v)) return v;
-    }
-
-    // Only trust entityId when the session is actually on a conversation record.
-    const entityName = String((ctx as Record<string, string>).entityName ?? "").toLowerCase();
-    if (entityName === "msdyn_ocliveworkitem") {
-      const v = String((ctx as Record<string, string>).entityId ?? "").replace(/[{}]/g, "");
-      if (GUID_RE.test(v)) return v;
-    }
-
-    // Last resort: any nested key that names a live work item.
-    for (const [key, value] of Object.entries(ctx)) {
-      if (!/liveworkitem|conversation/i.test(key)) continue;
-      const v = typeof value === "string" ? value.replace(/[{}]/g, "") : "";
-      if (GUID_RE.test(v)) return v;
-    }
-    return "";
-  }
-
   private renderShell(): void {
     this.container.innerHTML = `
       <div class="pwr-search">
-        <input type="text" class="pwr-input" placeholder="Conversation id or pasted record URL" aria-label="Conversation id or record URL" />
+        <input type="text" class="pwr-input" placeholder="Paste a conversation ID or the conversation URL (Copy link)" aria-label="Conversation ID or conversation URL" />
         <button class="pwr-btn" type="button">Analyze</button>
-        <button class="pwr-btn pwr-btn-secondary pwr-btn-session" type="button" title="Read the conversation from the session open on screen">Use current session</button>
       </div>
-      <div class="pwr-body"><div class="pwr-empty">Paste a conversation or work item id to see its routing story.</div></div>`;
+      <div class="pwr-body"><div class="pwr-empty">Paste a conversation ID, or the conversation URL from the <b>Copy link</b> button, to see its routing story.</div></div>`;
     const input = this.container.querySelector<HTMLInputElement>(".pwr-input");
     const btn = this.container.querySelector<HTMLButtonElement>(".pwr-btn");
     const go = () => {
@@ -126,29 +59,6 @@ export class ConversationAnalyzer implements ComponentFramework.StandardControl<
     btn?.addEventListener("click", go);
     input?.addEventListener("keydown", (e) => { if (e.key === "Enter") go(); });
 
-    this.container.querySelector<HTMLButtonElement>(".pwr-btn-session")?.addEventListener("click", () => {
-      const id = this.resolveFromSession();
-      const body = this.container.querySelector<HTMLDivElement>(".pwr-body");
-      if (id) {
-        this.load(id);
-      } else if (body) {
-        body.innerHTML = `<div class="pwr-warning">Could not read a conversation from the session on screen. ` +
-          `Custom productivity tools have no supported access to session context, so this does not always work. ` +
-          `Use the Copy link button on the conversation and paste the URL above.</div>`;
-      }
-    });
-
-    // Re-resolve when the agent switches session tabs, where the platform allows it.
-    try {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const sessions = (window.parent as any).Xrm?.App?.sessions;
-      if (sessions?.addOnAfterSessionSwitch) {
-        sessions.addOnAfterSessionSwitch(() => {
-          const id = this.resolveFromSession();
-          if (id && id !== this.currentId) this.load(id);
-        });
-      }
-    } catch { /* not available in this host */ }
   }
 
   private async load(id: string): Promise<void> {

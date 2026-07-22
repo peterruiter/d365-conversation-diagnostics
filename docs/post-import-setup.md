@@ -123,7 +123,6 @@ Open the web resource (from the solution, select it and use **Preview**, or reac
 | Entra tenant id | Directory (tenant) ID |
 | App registration client id | Application (client) ID |
 | Application Insights App ID | App ID from API Access |
-| Conversation Analyzer page name | The analyzer page's logical name from step 8 — fill this in after building the pages |
 | Client secret (fallback) | leave empty if using Key Vault — see below |
 
 **Secret handling.** Preferred is the Key Vault-backed secret variable `pwr_ClientSecret`:
@@ -158,7 +157,7 @@ Custom pages cannot be authored as code, so this is manual once. After step 13 t
 
 Same steps with the **ConversationAnalyzer** control. Name it whatever reads well — `Conversation Analyzer` is fine.
 
-> **You cannot choose the logical name.** Power Apps derives it from the display name, prefixes it with your publisher prefix and appends a random suffix, so a page called `Conversation Analyzer` might end up as `pwr_conversationanalyzerpage_d9f1c`. After saving, read the real value from **Solutions → your solution → the page's `Name` column** and paste it into the **Conversation Analyzer page name** field on the settings page (step 7). The drill-through link on the Routing Overview reads it from there. Leave it empty and the link shows as "Analyzer page not configured" instead of 404ing.
+This page is optional. The Routing Overview explains routing inline via its **Explain this routing** button, so you only need a standalone analyzer page if you want a full-screen view or a site map entry for it.
 
 ## 9. Surface the pages in your apps
 
@@ -289,7 +288,8 @@ Everything from steps 4, 5, 6 and 8 currently lives only in your environment. Th
 | The 3 Custom APIs | Add existing → More → Custom API (add all three) |
 | Web resource `pwr_settings.html` | Already added in step 6 if you created it inside the solution |
 | Both custom pages | Add existing → App → Page |
-| Site map / app changes | Add the apps you edited in step 9 |
+
+**Do not add the Customer Service workspace app or its site map.** That app is Microsoft's, and putting it in your solution makes your solution depend on the Dynamics 365 Customer Service solutions it ships in — which is what produces missing-dependency warnings on export. It also means your solution would overwrite site map customisations on anyone else's tenant. Installers add the pages to their own apps instead; that is step 9 and it stays a manual step by design.
 
 Then export and unpack over the repo:
 
@@ -299,6 +299,25 @@ pac solution unpack --zipfile .\out\ConversationDiagnostics.zip --folder solutio
 ```
 
 Commit the result. The unpack writes the plugin assembly into `solution/src/PluginAssemblies/…`, the Custom APIs into `solution/src/CustomAPIs/…`, and the pages into `solution/src/CanvasApps/…`. From that point a fresh environment is a single import — steps 4, 5, 6 and 8 disappear, leaving only 1, 2, 3, 7 and 10.
+
+### Dependency warnings on export
+
+Exporting may warn about a dependency on a Microsoft solution. Microsoft's guidance is that these warnings **can be ignored when the solution is designed to be installed over a pre-installed base solution** — which is exactly this case, since Customer Service with unified routing is a prerequisite. The dependency only breaks an import if the target environment genuinely lacks the component.
+
+Before ignoring it, check what is actually pulling it in:
+
+1. Solutions → your solution → **Show dependencies**, or select a component → **Show dependencies**.
+2. Work through the list and ask, for each: does this belong in a redistributable solution?
+
+Usual culprits and what to do:
+
+| Pulled in by | Action |
+|---|---|
+| Customer Service workspace app or its site map | Remove from the solution. Installers wire up their own apps in step 9 |
+| Productivity tool configuration record | Fine to leave — the table ships with Customer Service, which is a prerequisite anyway |
+| Custom pages | Fine — pages legitimately depend on platform components |
+
+Keep the solution to components you actually authored. Everything that customises Microsoft's own apps stays a documented manual step.
 
 > **The binary in source control gets stale.** After unpacking, `solution/src/PluginAssemblies/…/ConversationDiagnosticsPlugins.dll` is a snapshot. Rebuild the plugin and that file is out of date until you copy the fresh one over it. Add that copy step to `build.ps1` before packing, or re-export after every plugin change. Say the word and I will wire the copy into the build.
 
@@ -348,9 +367,9 @@ If the query returns nothing, the solution's code components did not import — 
 
 Still failing with the right name? Switch the tool **Type** to **Custom Page** and point it at the analyzer page from step 8. That route avoids control resolution entirely.
 
-### The drill-through link 404s or says "not configured"
+### Custom page errors when you add a parameter to its URL
 
-The **Conversation Analyzer page name** setting is empty or wrong. Power Apps appends a random suffix to custom page logical names, so it never matches the display name you typed. Look up the real value in Solutions → your solution → the page's `Name` column, and paste it into the settings page.
+Custom pages reject arbitrary query string parameters. `?pagetype=custom&name=<page>` works; adding `&pwr_id=<guid>` produces a generic "An error has occurred". This is why the Routing Overview explains routing inline instead of deep linking.
 
 ### Rebuilt and reimported, but nothing changed
 

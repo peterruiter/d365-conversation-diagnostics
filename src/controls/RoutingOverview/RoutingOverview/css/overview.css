@@ -35,3 +35,23 @@ td { border-bottom: 1px solid #f0f0f0; padding: 5px 8px; white-space: nowrap; ma
 .pwr-loading, .pwr-empty { color: #616161; padding: 8px 2px; }
 .pwr-error { background: #fdf3f4; border-left: 3px solid #c50f1f; padding: 8px; border-radius: 2px; }
 
+
+/* Inline routing explanation */
+.pwr-analyze-btn { float: right; font-size: 12px; padding: 4px 10px; background: #0f6cbd; color: #fff; border: none; border-radius: 4px; cursor: pointer; }
+.pwr-analyze-btn:hover { background: #115ea3; }
+.pwr-analysis-panel { border-left: 3px solid #0f6cbd; }
+.pwr-metrics { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
+.pwr-metric { background: #f5f5f5; border-radius: 6px; padding: 8px 12px; display: flex; flex-direction: column; min-width: 90px; }
+.pwr-metric-value { font-size: 16px; font-weight: 600; }
+.pwr-metric-label { font-size: 11px; color: #616161; }
+.pwr-warning { background: #fff9f0; border-left: 3px solid #f7630c; padding: 6px 8px; margin: 4px 0; border-radius: 2px; }
+.pwr-narrative p { margin: 0 0 6px; line-height: 1.45; }
+.pwr-timeline { border-left: 2px solid #e0e0e0; margin: 12px 0 0 52px; }
+.pwr-step { display: flex; position: relative; margin: 0 0 10px; }
+.pwr-step-time { position: absolute; left: -52px; width: 44px; text-align: right; color: #616161; font-size: 11px; padding-top: 2px; }
+.pwr-step-dot { width: 10px; height: 10px; border-radius: 50%; background: #0f6cbd; margin: 4px 8px 0 -6px; flex-shrink: 0; }
+.pwr-step.pwr-success .pwr-step-dot { background: #107c10; }
+.pwr-step.pwr-warning .pwr-step-dot { background: #f7630c; }
+.pwr-step.pwr-error .pwr-step-dot { background: #c50f1f; }
+.pwr-step-label { font-weight: 600; }
+.pwr-step-detail { color: #616161; }

@@ -1,5 +1,6 @@
 import { IInputs, IOutputs } from "./generated/ManifestTypes";
-import { runNamedQuery, getEnvironmentVariable, getAppId } from "./api";
+import { runNamedQuery, getConversationDiagnostics } from "./api";
+import { explain, Explanation } from "./explainEngine";
 
 /* Routing Overview
    Replica of the FastTrack "Unified Routing Diagnostics" dashboard page,
@@ -28,28 +29,13 @@ export class RoutingOverview implements ComponentFramework.StandardControl<IInpu
   private container!: HTMLDivElement;
   private hours = 6;
   private selectedWorkItem = "";
-  /* Logical name of the analyzer custom page. Power Apps appends its own suffix when a
-     page is created (e.g. pwr_conversationanalyzerpage_d9f1c), so it cannot be hardcoded.
-     Admins set it in the Diagnostics Settings page; empty means hide the drill-through. */
-  private analyzerPageName = "";
+
 
   public init(_context: ComponentFramework.Context<IInputs>, _notify: () => void, _state: ComponentFramework.Dictionary, container: HTMLDivElement): void {
     this.container = container;
     this.container.classList.add("pwr-overview");
     this.renderShell();
     void this.loadIncoming();
-    void this.loadAnalyzerPageName();
-  }
-
-  /* Resolved once at load. Power Apps appends a random suffix to custom page logical
-     names, so the target page cannot be hardcoded and is configured by an admin. */
-  private async loadAnalyzerPageName(): Promise<void> {
-    try {
-      const name = await getEnvironmentVariable("pwr_AnalyzerPageName");
-      this.analyzerPageName = name.trim();
-    } catch {
-      this.analyzerPageName = "";
-    }
   }
 
   public updateView(): void { /* stateless against context */ }
@@ -77,10 +63,14 @@ export class RoutingOverview implements ComponentFramework.StandardControl<IInpu
         ${DETAIL_TILES.map((t) => `
           <div class="pwr-panel">
             <h3>${t.title} <span class="pwr-selected-id"></span>
-              ${t.key === "WorkItemTimeline" ? `<a class="pwr-analyzer-link" hidden>Open in Conversation Analyzer</a>` : ""}
+              ${t.key === "WorkItemTimeline" ? `<button class="pwr-analyze-btn" type="button" hidden>Explain this routing</button>` : ""}
             </h3>
             <div class="pwr-grid" data-tile="${t.key}"><div class="pwr-empty">Select a work item above.</div></div>
           </div>`).join("")}
+      </div>
+      <div class="pwr-panel pwr-analysis-panel" hidden>
+        <h3>Routing explanation <span class="pwr-selected-id"></span></h3>
+        <div class="pwr-analysis-body"></div>
       </div>
       <h2 class="pwr-section">Problem spotlights</h2>
       ${PROBLEM_TILES.map((t) => `
@@ -94,6 +84,9 @@ export class RoutingOverview implements ComponentFramework.StandardControl<IInpu
       void this.loadIncoming();
     });
     this.container.querySelector<HTMLButtonElement>(".pwr-refresh")?.addEventListener("click", () => void this.loadIncoming());
+    this.container.querySelector<HTMLButtonElement>(".pwr-analyze-btn")?.addEventListener("click", () => {
+      if (this.selectedWorkItem) void this.renderAnalysis(this.selectedWorkItem);
+    });
     this.container.querySelectorAll<HTMLDetailsElement>(".pwr-collapsible").forEach((d) => {
       d.addEventListener("toggle", () => {
         if (d.open) void this.loadTile(d.dataset.key as string, d.querySelector(".pwr-grid") as HTMLElement);
@@ -126,31 +119,58 @@ export class RoutingOverview implements ComponentFramework.StandardControl<IInpu
   private selectWorkItem(id: string): void {
     this.selectedWorkItem = id;
     this.container.querySelectorAll<HTMLElement>(".pwr-selected-id").forEach((el) => (el.textContent = `· ${id}`));
-    const link = this.container.querySelector<HTMLAnchorElement>(".pwr-analyzer-link");
-    if (link) {
-      if (this.analyzerPageName) {
-        link.hidden = false;
-        link.title = "";
-        const appId = getAppId();
-        const parts = [
-          appId ? `appid=${encodeURIComponent(appId)}` : "",
-          "pagetype=custom",
-          `name=${encodeURIComponent(this.analyzerPageName)}`,
-          `pwr_id=${encodeURIComponent(id)}`
-        ].filter(Boolean);
-        link.href = `/main.aspx?${parts.join("&")}`;
-      } else {
-        // Not configured: keep it visible but inert, with an explanation rather than a 404.
-        link.hidden = false;
-        link.removeAttribute("href");
-        link.title = "Set the analyzer page name in Diagnostics Settings to enable this link.";
-        link.textContent = "Analyzer page not configured";
-      }
-    }
+    const analyzeBtn = this.container.querySelector<HTMLButtonElement>(".pwr-analyze-btn");
+    if (analyzeBtn) analyzeBtn.hidden = false;
+    // Collapse any previous explanation; it belongs to the previously selected row.
+    const panel = this.container.querySelector<HTMLElement>(".pwr-analysis-panel");
+    if (panel) panel.hidden = true;
+
     for (const t of DETAIL_TILES) {
       const grid = this.container.querySelector<HTMLElement>(`[data-tile="${t.key}"]`);
       if (grid) void this.loadTile(t.key, grid, id);
     }
+  }
+
+  /* Full routing explanation for the selected work item, rendered in place.
+     Deliberately not a navigation to the analyzer custom page: custom pages reject
+     arbitrary query string parameters, so a deep link carrying the id fails. */
+  private async renderAnalysis(workItemId: string): Promise<void> {
+    const panel = this.container.querySelector<HTMLElement>(".pwr-analysis-panel");
+    const body = this.container.querySelector<HTMLElement>(".pwr-analysis-body");
+    if (!panel || !body) return;
+
+    panel.hidden = false;
+    body.innerHTML = `<div class="pwr-loading">Building explanation...</div>`;
+    panel.scrollIntoView({ behavior: "smooth", block: "nearest" });
+
+    try {
+      const events = await getConversationDiagnostics(workItemId);
+      this.paintExplanation(body, explain(events));
+    } catch (err) {
+      body.innerHTML = `<div class="pwr-error">${escapeHtml((err as Error).message)}</div>`;
+    }
+  }
+
+  private paintExplanation(body: HTMLElement, ex: Explanation): void {
+    const metrics = ex.metrics.map((m) =>
+      `<div class="pwr-metric"><span class="pwr-metric-value">${escapeHtml(m.value)}</span><span class="pwr-metric-label">${escapeHtml(m.label)}</span></div>`).join("");
+    const warnings = ex.warnings.map((w) => `<div class="pwr-warning">${escapeHtml(w)}</div>`).join("");
+    const narrative = ex.narrative.map((n) => `<p>${escapeHtml(n)}</p>`).join("");
+    const steps = ex.steps.map((st) => `
+      <div class="pwr-step pwr-${st.status}">
+        <div class="pwr-step-time">+${st.secondsFromStart}s</div>
+        <div class="pwr-step-dot"></div>
+        <div class="pwr-step-content">
+          <div class="pwr-step-label">${escapeHtml(st.label)}</div>
+          ${st.detail ? `<div class="pwr-step-detail">${escapeHtml(st.detail)}</div>` : ""}
+        </div>
+      </div>`).join("");
+
+    body.innerHTML = `
+      ${metrics ? `<div class="pwr-metrics">${metrics}</div>` : ""}
+      ${warnings}
+      <div class="pwr-narrative">${narrative}</div>
+      <div class="pwr-timeline">${steps}</div>`;
   }
 
   private renderTable(grid: HTMLElement, rows: Record<string, unknown>[], selectable: boolean): void {

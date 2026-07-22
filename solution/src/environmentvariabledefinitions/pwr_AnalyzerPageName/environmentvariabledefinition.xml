@@ -1,8 +1,0 @@
-<environmentvariabledefinition schemaname="pwr_AnalyzerPageName">
-  <displayname default="Conversation Analyzer page name">
-    <label description="Conversation Analyzer page name" languagecode="1033" />
-  </displayname>
-  <isrequired>0</isrequired>
-  <secretstore>0</secretstore>
-  <type>100000000</type>
-</environmentvariabledefinition>

@@ -36,10 +36,6 @@
   <input id="appId" data-var="pwr_AppInsightsAppId" />
   <div class="hint">From the resource's <b>API Access</b> blade. Not the instrumentation key, not the Azure resource id.</div>
 
-  <label for="analyzerPage">Conversation Analyzer page name</label>
-  <input id="analyzerPage" data-var="pwr_AnalyzerPageName" placeholder="pwr_conversationanalyzerpage_xxxxx" />
-  <div class="hint">The <b>logical</b> name of the analyzer custom page. Power Apps appends its own suffix when a page is created, so it will not match what you typed as the display name. Find it in Solutions &rarr; your solution &rarr; the page's <b>Name</b> column. Leave empty to disable the drill-through link on the Routing Overview.</div>
-
   <label for="secretPlain">Client secret (fallback)</label>
   <input id="secretPlain" data-var="pwr_ClientSecretPlain" type="password" />
   <div class="hint">Preferred: leave this empty and configure the Key Vault-backed secret variable <code>pwr_ClientSecret</code> instead. This plain value is stored in Dataverse and readable by admins.</div>

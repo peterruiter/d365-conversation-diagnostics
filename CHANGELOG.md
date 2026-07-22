@@ -1,6 +1,10 @@
 # Changelog
 
 ## Unreleased
+- Corrected step 13 of the runbook. It told you to add the Customer Service workspace app and its site map to the solution, which makes the solution depend on Microsoft's Customer Service solutions and would overwrite site map customisations on a target tenant. Those stay a documented manual step. Added guidance on reading and triaging export dependency warnings.
+- **Replaced the Routing Overview drill-through with an inline explanation.** Custom pages reject arbitrary query string parameters, so a URL carrying `&pwr_id=<guid>` errored even though the same URL without it loaded fine. Selecting a work item now reveals an **Explain this routing** button that renders the timeline, metrics and written explanation in place — no navigation, no page name to configure. The `pwr_AnalyzerPageName` environment variable and its settings field are gone.
+- **Removed session auto-detection from the Conversation Analyzer**, including the "Use current session" button. Microsoft documents no supported session-context access for custom productivity tools and the attempts were unreliable. The field placeholder now states that a conversation URL is accepted as well as an ID.
+- Bumped both controls to 1.0.2.
 - Added `deploy/import-solution.ps1` and a `build.ps1 -Import` switch, so a rebuild can go straight into the environment with `--publish-changes` and `--activate-plugins` rather than uploading the zip by hand.
 - Bumped both control versions to 1.0.1. Dataverse only refreshes a code component when its version changes, so importing a rebuilt solution at the same version silently keeps the old control.
 - Added `build.ps1 -BumpControls` to increment the patch version in both manifests.
