@@ -48,6 +48,7 @@ Three decisions worth calling out:
 Two routes. Pick one.
 
 ### Route A — install the release (recommended)
+![Setup and configuration](https://img.youtube.com/vi/tKjQUO7vpbg/0.jpg)](https://www.youtube.com/watch?v=tKjQUO7vpbg).
 
 You want the tool working. You do not care about the source.
 
