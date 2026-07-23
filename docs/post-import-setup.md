@@ -10,22 +10,26 @@ The release solution carries the plugin assembly and the three Custom APIs, so *
 
 ## What the solution gave you
 
-| In the solution | You add it below |
+| In the solution | You still do by hand |
 |---|---|
-| Both PCF controls | Settings web resource (step 6) |
-| 5 environment variable definitions | 2 custom pages (step 8) |
-| Plug-in assembly `ConversationDiagnosticsPlugins` | Site map entries (step 9) |
-| 3 Custom APIs (`pwr_*`) | Productivity pane tool (step 10) |
+| Both PCF controls | Configure the connection (step 7) |
+| 5 environment variable definitions | Site map entries (step 9) |
+| Plug-in assembly `ConversationDiagnosticsPlugins` | Productivity pane tool (step 10) |
+| 3 Custom APIs (`pwr_*`) | Custom API security (step 11) |
+| Settings web resource | |
+| Both custom pages | |
 
-The right-hand column is what Microsoft's platform will not let a solution carry cleanly, or what would overwrite your own apps if it did.
+The right-hand column is what a solution cannot carry without trampling your own apps, plus the configuration only you have.
 
 **Verify first.** Open the solution in the maker portal and confirm you see:
 
 - Both code components
-- All five environment variables (`pwr_TenantId`, `pwr_ClientId`, `pwr_AppInsightsAppId`, `pwr_ClientSecret`, `pwr_ClientSecretPlain`)
+- Five environment variables (`pwr_TenantId`, `pwr_ClientId`, `pwr_AppInsightsAppId`, `pwr_ClientSecret`, `pwr_ClientSecretPlain`)
 - The plug-in assembly and three Custom APIs
+- The `pwr_settings` web resource
+- Two custom pages
 
-Anything missing changes which steps below you need. Steps 4 and 5 each open with a check for exactly this reason.
+**Steps 4, 5, 6 and 8 are already done for you.** Each opens with a check so you can confirm and move on. If you are building from source and your `solution/src` is missing a component folder, those steps tell you how to create it.
 
 ---
 
@@ -137,14 +141,18 @@ If it reports the assembly was not found, it lists the similarly named assemblie
 
 > **Parameter types are immutable.** If the APIs exist but the dashboards fail, the parameters may have been created with the wrong type. Recreate them with `-Force`.
 
-## 6. Add the settings page
+## 6. Add the settings page — check first
 
-The web resource ships as a loose file in the repo, not inside the solution. Add it once, then step 13 captures it permanently.
+**Shipped in the solution.** Look for a web resource named `pwr_settings` in the solution. If it is there, skip to step 7.
+
+Missing? Add it manually:
 
 1. Maker portal → Solutions → your solution → **New → More → Web resource**.
-2. Display name: `Conversation Diagnostics Settings`. Name: `pwr_settings.html`. Type: **HTML**.
+2. Name: `pwr_settings`. Type: **HTML**.
 3. Upload `src/webresources/pwr_settings.html`.
 4. Save, then **Publish**.
+
+> The web resource is named `pwr_settings` without a file extension. `build.ps1` reads the target filename out of the captured `.data.xml`, so edits to `src/webresources/pwr_settings.html` reach the packed copy on the next build.
 
 ## 7. Configure and test the connection
 
@@ -174,22 +182,24 @@ Now press **Test connection**. It runs `traces | take 1` end to end and reports 
 | Query failed (404) | wrong App ID — you likely used the instrumentation key or resource id |
 | environment variable … is not set | variable missing or value not saved |
 
-## 8. Build the two custom pages
+## 8. Build the two custom pages — check first
 
-Custom pages cannot be authored as code, so this is manual once. After step 13 they ship in the solution.
+**Shipped in the solution.** Both pages import with it. Open the solution and look for two pages under Apps. If they are there, skip to step 9.
+
+Missing? Build them:
 
 **Routing Overview page**
 
 1. Solutions → your solution → **New → App → Page** (custom page).
 2. Insert → **Get more components** → **Code** tab → import **RoutingOverview**.
 3. Drag it onto the page, set width and height to fill the screen.
-4. Save. Name it `Routing Overview`. Publish.
+4. Save and publish.
 
 **Conversation Analyzer page**
 
-Same steps with the **ConversationAnalyzer** control. Name it whatever reads well — `Conversation Analyzer` is fine.
+Same steps with the **ConversationAnalyzer** control. Name it whatever reads well.
 
-This page is optional. The Routing Overview explains routing inline via its **Explain this routing** button, so you only need a standalone analyzer page if you want a full-screen view or a site map entry for it.
+> You cannot choose the logical name. Power Apps derives it from the display name, prefixes it with your publisher prefix and appends a random suffix, so a page called `Conversation Analyzer` becomes something like `pwr_pwrconversationanalyzerpage_d9f1c`. Nothing depends on that name any more — the Routing Overview explains routing in place rather than linking out — but it is worth knowing when you go looking for a page in a list.
 
 ## 9. Surface the pages in your apps
 

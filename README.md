@@ -55,20 +55,20 @@ You want the tool working. You do not care about the source.
 2. Import it into your environment.
 3. Work through **[docs/post-import-setup.md](docs/post-import-setup.md)**.
 
-The solution carries the two controls, the environment variables, the plug-in assembly and the three Custom APIs, so the import handles all of that. What is left is configuration and the pieces a solution cannot carry without trampling your own apps:
+The solution carries both controls, the environment variables, the plug-in assembly, the three Custom APIs, the settings page and both custom pages. The import handles all of it. What is left is your configuration, plus the pieces a solution cannot carry without trampling your own apps:
 
 | Step | What |
 |---|---|
 | 1 | Turn on **Power Apps component framework for canvas apps** |
 | 2 | Confirm telemetry reaches Application Insights |
 | 3 | Create the Entra app registration, grant Reader, copy the App ID ([docs/setup-azure.md](docs/setup-azure.md)) |
-| 4–5 | Already done by the import — each step has a check to confirm |
-| 6–7 | Add the settings page, fill it in, press **Test connection** |
-| 8–9 | Build the custom pages and add them to your apps |
+| 4–6, 8 | Already done by the import — each step has a check so you can confirm |
+| 7 | Fill in the settings page and press **Test connection** |
+| 9 | Add the two pages to your apps |
 | 10 | Register the productivity pane tool ([docs/setup-app-profile.md](docs/setup-app-profile.md)) |
 | 11 | Lock down who can call the Custom APIs |
 
-Budget 45–60 minutes the first time.
+Budget 30–45 minutes the first time.
 
 ### Route B — build from source
 
@@ -143,7 +143,7 @@ If you never run the local test harness, dropping `pcf-start` from `devDependenc
 - **The productivity pane cannot read the session.** Microsoft documents that custom productivity tools are not bound to the session context, so the pane cannot tell which conversation is on screen. Paste the ID, or the URL from the Copy link button. I pulled the auto-detection out: it worked just often enough to look reliable, which is worse than not working at all.
 - **Custom pages reject extra URL parameters.** That is why the overview explains routing in place instead of deep linking to the analyzer page.
 - **Application Insights only.** The FastTrack KQL uses App Insights schema (`traces`, `timestamp`, `customDimensions`). The Log Analytics workspace API uses different names, so it would need a parallel query set. Workspace-based App Insights resources work fine.
-- **Custom pages are manual on first setup.** Power Apps generates their logical names with a random suffix, so capture them into the solution afterwards (step 13) if you want the next environment to be a straight import.
+- **Site map entries and the productivity pane tool stay manual.** Shipping a site map would overwrite your own apps, and pane tool configuration is an environment record rather than a solution component.
 
 ## Roadmap
 

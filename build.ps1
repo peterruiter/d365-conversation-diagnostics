@@ -31,12 +31,23 @@ if ($BumpControls) {
     }
 }
 
-# Keep the packaged copy of the settings page in step with the source of truth.
+# Keep the packaged settings page in step with the source of truth.
+# The captured web resource is named by its Dataverse Name, not by a file extension,
+# so read the target filename out of the .data.xml rather than assuming one. Writing
+# to the wrong filename leaves an orphan and your edits never reach the solution.
 $wrSource = Join-Path $root "src/webresources/pwr_settings.html"
-$wrTarget = Join-Path $root "solution/src/WebResources/pwr_settings.html"
-if (Test-Path $wrSource) {
-    New-Item -ItemType Directory -Force -Path (Split-Path $wrTarget) | Out-Null
-    Copy-Item $wrSource $wrTarget -Force
+$wrDir = Join-Path $root "solution/src/WebResources"
+if ((Test-Path $wrSource) -and (Test-Path $wrDir)) {
+    $dataXml = Get-ChildItem -Path $wrDir -Filter "*.data.xml" -ErrorAction SilentlyContinue |
+        Where-Object { (Get-Content $_.FullName -Raw) -match "<Name>pwr_settings" } |
+        Select-Object -First 1
+    if ($dataXml) {
+        $wrTarget = Join-Path $wrDir ($dataXml.Name -replace "\.data\.xml$", "")
+        Copy-Item $wrSource $wrTarget -Force
+        Write-Host "Synced settings page to $([System.IO.Path]::GetFileName($wrTarget))" -ForegroundColor Cyan
+    } else {
+        Write-Host "No settings web resource found under solution/src/WebResources - skipping sync." -ForegroundColor Yellow
+    }
 }
 
 function Install-Deps($path) {
