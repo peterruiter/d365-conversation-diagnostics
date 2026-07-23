@@ -1,0 +1,18 @@
+<customapi uniquename="pwr_ExecuteDiagnosticsQuery">
+  <allowedcustomprocessingsteptype>0</allowedcustomprocessingsteptype>
+  <bindingtype>0</bindingtype>
+  <description default="Execute Diagnostics Query">
+    <label description="Execute Diagnostics Query" languagecode="1033" />
+  </description>
+  <displayname default="Execute Diagnostics Query">
+    <label description="Execute Diagnostics Query" languagecode="1033" />
+  </displayname>
+  <iscustomizable>1</iscustomizable>
+  <isfunction>0</isfunction>
+  <isprivate>0</isprivate>
+  <name>Execute Diagnostics Query</name>
+  <plugintypeid>
+    <plugintypeexportkey>f9bbb78c-3077-4f4f-82c1-33ffec194142</plugintypeexportkey>
+  </plugintypeid>
+  <workflowsdkstepenabled>0</workflowsdkstepenabled>
+</customapi>

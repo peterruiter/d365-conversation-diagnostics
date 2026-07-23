@@ -1,0 +1,11 @@
+<customapiresponseproperty uniquename="EventsJson">
+  <description default="EventsJson">
+    <label description="EventsJson" languagecode="1033" />
+  </description>
+  <displayname default="EventsJson">
+    <label description="EventsJson" languagecode="1033" />
+  </displayname>
+  <iscustomizable>1</iscustomizable>
+  <name>EventsJson</name>
+  <type>10</type>
+</customapiresponseproperty>

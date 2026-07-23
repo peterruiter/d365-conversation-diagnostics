@@ -1,0 +1,18 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<PluginAssembly FullName="ConversationDiagnosticsPlugins, Version=1.0.0.0, Culture=neutral, PublicKeyToken=cdc6b8bdc9b49d7e" PluginAssemblyId="99bbe35a-17e8-48ab-9671-31d0b0d1317d" CustomizationLevel="1" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <IsolationMode>2</IsolationMode>
+  <SourceType>0</SourceType>
+  <IntroducedVersion>1.0</IntroducedVersion>
+  <FileName>/PluginAssemblies/ConversationDiagnosticsPlugins-99BBE35A-17E8-48AB-9671-31D0B0D1317D/ConversationDiagnosticsPlugins.dll</FileName>
+  <PluginTypes>
+    <PluginType AssemblyQualifiedName="ConversationDiagnostics.Plugins.ExecuteDiagnosticsQueryPlugin, ConversationDiagnosticsPlugins, Version=1.0.0.0, Culture=neutral, PublicKeyToken=cdc6b8bdc9b49d7e" PluginTypeId="f9bbb78c-3077-4f4f-82c1-33ffec194142" Name="ConversationDiagnostics.Plugins.ExecuteDiagnosticsQueryPlugin">
+      <FriendlyName>007cdbe2-8db2-46cd-b13d-67b49c2e2d32</FriendlyName>
+    </PluginType>
+    <PluginType AssemblyQualifiedName="ConversationDiagnostics.Plugins.GetConversationDiagnosticsPlugin, ConversationDiagnosticsPlugins, Version=1.0.0.0, Culture=neutral, PublicKeyToken=cdc6b8bdc9b49d7e" PluginTypeId="ee1c445b-c7ea-4a33-a400-2704435fe62a" Name="ConversationDiagnostics.Plugins.GetConversationDiagnosticsPlugin">
+      <FriendlyName>4da0b634-be7a-4f75-b8a7-5b7f41d9399f</FriendlyName>
+    </PluginType>
+    <PluginType AssemblyQualifiedName="ConversationDiagnostics.Plugins.TestConnectionPlugin, ConversationDiagnosticsPlugins, Version=1.0.0.0, Culture=neutral, PublicKeyToken=cdc6b8bdc9b49d7e" PluginTypeId="0fe5ae24-7cb7-4635-b19e-dcb93770a7c0" Name="ConversationDiagnostics.Plugins.TestConnectionPlugin">
+      <FriendlyName>a2ea2605-f9a2-4b82-b9f7-82b23d027e97</FriendlyName>
+    </PluginType>
+  </PluginTypes>
+</PluginAssembly>

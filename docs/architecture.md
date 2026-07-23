@@ -28,7 +28,12 @@ Subscenario names vary slightly across channels and product waves; the engine ma
 
 The solution zip carries the two PCF controls and the environment variable definitions. The plugin assembly is registered separately with the Plugin Registration Tool, and the Custom APIs are created by `deploy/register-customapis.ps1`. The settings web resource and the two custom pages are added by hand on first setup, then captured into the solution on the next export. Full sequence in [post-import-setup.md](post-import-setup.md).
 
-The plugin sits outside the *build* on purpose: referencing a plugin csproj from the cdsproj trips Microsoft build-tools issues #959 and #1232 (assembly registration configuration errors during packaging). It still belongs *in* the shipped solution — add it via the maker portal and capture it on export, so consumers install one zip.
+**The plugin belongs in the shipped solution, but not as a cdsproj project reference.** Two different things, easy to conflate:
+
+- *In the solution*: yes. Add the registered assembly through the maker portal and capture it on export. Consumers then install one zip and the import registers the assembly for them.
+- *As a `<ProjectReference>` from the cdsproj*: no. That path trips Microsoft build-tools issues #959 and #1232, which fail packaging with assembly registration configuration errors.
+
+So `build.ps1` compiles the plugin separately, then overwrites the copy captured under `solution/src` before packing. Without that overwrite the packer would ship whatever DLL was last committed.
 
 **Assembly naming.** `AssemblyName` is `ConversationDiagnosticsPlugins`, deliberately without dots, because the solution packager mangles dotted assembly names (issue #1232). The C# namespaces remain `ConversationDiagnostics.Plugins.*`, so plugin type full names are unaffected. Anything that looks the assembly up by name — `deploy/register-customapis.ps1`, PRT, the maker portal — must use the dot-free form.
 

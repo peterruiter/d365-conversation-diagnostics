@@ -4,18 +4,28 @@ You imported the solution. It contains the two PCF controls and five environment
 
 Budget 60–90 minutes for a first run.
 
+## Installing from a release?
+
+The release solution carries the plugin assembly and the three Custom APIs, so **steps 4 and 5 are already done for you**. Each has a check at the top — run it, confirm, move on. Everything else applies unchanged.
+
 ## What the solution gave you
 
-| In the solution | Not in the solution — you add it below |
+| In the solution | You add it below |
 |---|---|
-| `pwr_ConversationDiagnostics.ConversationAnalyzer` (PCF) | Plugin assembly `ConversationDiagnosticsPlugins` (step 4, added to solution in step 13) |
-| `pwr_ConversationDiagnostics.RoutingOverview` (PCF) | 3 Custom APIs (step 5) |
-| 5 environment variable definitions | Settings web resource (step 6) |
-| | 2 custom pages (step 8) |
-| | Site map entries (step 9) |
-| | Productivity pane tool (step 10) |
+| Both PCF controls | Settings web resource (step 6) |
+| 5 environment variable definitions | 2 custom pages (step 8) |
+| Plug-in assembly `ConversationDiagnosticsPlugins` | Site map entries (step 9) |
+| 3 Custom APIs (`pwr_*`) | Productivity pane tool (step 10) |
 
-**Verify first.** Open the solution in the maker portal and confirm you see both code components and all five environment variables (`pwr_TenantId`, `pwr_ClientId`, `pwr_AppInsightsAppId`, `pwr_ClientSecret`, `pwr_ClientSecretPlain`). If the environment variables are missing, add them manually — the packed `Solution.xml` ships with an empty `RootComponents` list, which can drop them on some packager versions.
+The right-hand column is what Microsoft's platform will not let a solution carry cleanly, or what would overwrite your own apps if it did.
+
+**Verify first.** Open the solution in the maker portal and confirm you see:
+
+- Both code components
+- All five environment variables (`pwr_TenantId`, `pwr_ClientId`, `pwr_AppInsightsAppId`, `pwr_ClientSecret`, `pwr_ClientSecretPlain`)
+- The plug-in assembly and three Custom APIs
+
+Anything missing changes which steps below you need. Steps 4 and 5 each open with a check for exactly this reason.
 
 ---
 
@@ -59,11 +69,21 @@ Keep four values to hand: tenant id, client id, client secret, App ID.
 
 > The App ID is not the instrumentation key and not the Azure resource id. Wrong value here produces a 404 from the query API, which reads like a permissions problem but is not.
 
-## 4. Register the plugin assembly
+## 4. Register the plugin assembly — check first
 
-The plugin is deliberately outside the solution (Microsoft build-tools issues #959 and #1232 break solution packaging with plugin project references).
+**If you installed a release, this step is already done.** The plugin assembly ships inside the solution, so importing it registers the assembly for you. Same if you build from source and your `solution/src` contains a `PluginAssemblies` folder.
 
-1. Build it if you have not: `.\build.ps1` — produces `src/plugin/ConversationDiagnostics.Plugins/bin/Release/net462/ConversationDiagnosticsPlugins.dll`.
+Confirm before you do anything. Paste this in a browser tab while signed in:
+
+```
+https://<yourorg>.crm4.dynamics.com/api/data/v9.2/pluginassemblies?$select=name,version&$filter=name eq 'ConversationDiagnosticsPlugins'
+```
+
+A row back means you are done here — **skip to step 5**. Registering it again through PRT creates a second assembly and the Custom APIs bind to the wrong one.
+
+Nothing back? Register it by hand:
+
+1. Get the assembly. From a release: the `ConversationDiagnosticsPlugins.dll` from the Releases page. From source: run `.\build.ps1`, which writes it to `src/plugin/ConversationDiagnostics.Plugins/bin/Release/net462/`.
 2. Authenticate: `pac auth create --environment https://yourorg.crm4.dynamics.com`
 3. Launch the Plugin Registration Tool: `.\deploy\push-plugin.ps1 -Register`
 4. In PRT:
@@ -75,17 +95,21 @@ The plugin is deliberately outside the solution (Microsoft build-tools issues #9
 
 Register the assembly only. Do **not** add any steps — the plugin types are invoked by Custom APIs, not by SDK message steps.
 
-The assembly registers under the name **`ConversationDiagnosticsPlugins`** — no dots. The dll filename is deliberately dot-free to avoid a solution packaging bug; the C# namespaces are still `ConversationDiagnostics.Plugins.*`, so the plugin type names are unaffected. Step 5 looks the assembly up by that name.
+The assembly registers under the name **`ConversationDiagnosticsPlugins`** — no dots. The dll filename is deliberately dot-free because the solution packager mangles dotted assembly names. The C# namespaces are still `ConversationDiagnostics.Plugins.*`, so the plugin type names are unaffected. Step 5 looks the assembly up by that name.
 
-> `pac plugin push` cannot do this first registration. Its `--pluginId` parameter is required and that GUID only exists after the assembly is registered. Use it for later updates: `.\deploy\push-plugin.ps1 -Update -PluginId <guid>`.
+> `pac plugin push` cannot do a first registration. Its `--pluginId` parameter is required and that GUID only exists after the assembly is registered. Use it for later updates: `.\deploy\push-plugin.ps1 -Update -PluginId <guid>`.
 
-## 5. Create the Custom APIs
+## 5. Create the Custom APIs — check first
 
-```powershell
-.\deploy\register-customapis.ps1 -EnvironmentUrl https://yourorg.crm4.dynamics.com
+**If you installed a release, this is already done too.** The three Custom APIs ship in the solution alongside the assembly.
+
+Check:
+
+```
+https://<yourorg>.crm4.dynamics.com/api/data/v9.2/customapis?$select=uniquename&$filter=startswith(uniquename,'pwr_')
 ```
 
-Creates three Custom APIs bound to the plugin types:
+Three rows back means skip to step 6:
 
 | Custom API | Purpose |
 |---|---|
@@ -93,7 +117,13 @@ Creates three Custom APIs bound to the plugin types:
 | `pwr_GetConversationDiagnostics` | Returns the full event stream for one conversation |
 | `pwr_TestDiagnosticsConnection` | Powers the Test connection button |
 
-The script is idempotent — it skips APIs that already exist.
+Missing or incomplete? Create them:
+
+```powershell
+.\deploy\register-customapis.ps1 -EnvironmentUrl https://yourorg.crm4.dynamics.com
+```
+
+The script is idempotent: it skips APIs that already exist and tells you so. Safe to run even if you are unsure.
 
 **Dependency:** it authenticates with the Azure CLI (`az account get-access-token`). Install Azure CLI first, or swap the token acquisition for your preferred method. The script prompts an `az login` if no token is cached.
 
@@ -104,6 +134,8 @@ If it reports the assembly was not found, it lists the similarly named assemblie
 ```powershell
 .\deploy\register-customapis.ps1 -EnvironmentUrl https://yourorg.crm4.dynamics.com -PluginAssemblyName ConversationDiagnosticsPlugins
 ```
+
+> **Parameter types are immutable.** If the APIs exist but the dashboards fail, the parameters may have been created with the wrong type. Recreate them with `-Force`.
 
 ## 6. Add the settings page
 
@@ -278,27 +310,34 @@ Empty grids with no error mean telemetry, not configuration — go back to step 
 
 ## 13. Capture the manual work into the solution
 
-Everything from steps 4, 5, 6 and 8 currently lives only in your environment. The released managed solution has to carry all of it, or every person who installs this repeats the whole runbook. Pull it into source control.
+Anything you created by hand lives only in your environment until you capture it. The released solution has to carry it, or every person who installs this repeats your work.
+
+If you installed a release, the plugin assembly and Custom APIs are already captured — this step is about the settings page and the custom pages you built in steps 6 and 8.
 
 **Add these to the solution** (maker portal → your solution → Add existing):
 
 | Component | Where to find it |
 |---|---|
-| Plug-in assembly `ConversationDiagnosticsPlugins` | Add existing → More → Plug-in assembly |
-| The 3 Custom APIs | Add existing → More → Custom API (add all three) |
+| Plug-in assembly `ConversationDiagnosticsPlugins` | Add existing → More → Plug-in assembly (skip if it came with the solution) |
+| The 3 Custom APIs | Add existing → More → Custom API (skip if they came with the solution) |
 | Web resource `pwr_settings.html` | Already added in step 6 if you created it inside the solution |
 | Both custom pages | Add existing → App → Page |
 
 **Do not add the Customer Service workspace app or its site map.** That app is Microsoft's, and putting it in your solution makes your solution depend on the Dynamics 365 Customer Service solutions it ships in — which is what produces missing-dependency warnings on export. It also means your solution would overwrite site map customisations on anyone else's tenant. Installers add the pages to their own apps instead; that is step 9 and it stays a manual step by design.
 
-Then export and unpack over the repo:
+Then capture it into source control:
 
 ```powershell
-pac solution export --path .\out\ConversationDiagnostics.zip --name ConversationDiagnostics --managed false
-pac solution unpack --zipfile .\out\ConversationDiagnostics.zip --folder solution\src --packagetype Unmanaged
+.\deploy\capture-solution.ps1
 ```
 
+That exports the unmanaged solution, unpacks it over `solution/src`, and checks the result for environment-specific values before you commit.
+
+> **Do not commit environment variable values.** Definitions belong in source control; values carry your tenant id, client id, App Insights App ID and, if you used the plain fallback, a client secret. `capture-solution.ps1` flags both `environmentvariablevalue` records and any `<defaultvalue>` left in a definition. Clear them before committing.
+
 Commit the result. The unpack writes the plugin assembly into `solution/src/PluginAssemblies/…`, the Custom APIs into `solution/src/CustomAPIs/…`, and the pages into `solution/src/CanvasApps/…`. From that point a fresh environment is a single import — steps 4, 5, 6 and 8 disappear, leaving only 1, 2, 3, 7 and 10.
+
+> **Check your build matches your release.** If you added the plugin and Custom APIs through the maker portal and exported that zip for the release, but never unpacked it over `solution/src`, then `build.ps1` produces a *smaller* solution than the one you published. Unpack and commit so both paths produce the same artifact.
 
 ### Dependency warnings on export
 
@@ -319,7 +358,7 @@ Usual culprits and what to do:
 
 Keep the solution to components you actually authored. Everything that customises Microsoft's own apps stays a documented manual step.
 
-> **The binary in source control gets stale.** After unpacking, `solution/src/PluginAssemblies/…/ConversationDiagnosticsPlugins.dll` is a snapshot. Rebuild the plugin and that file is out of date until you copy the fresh one over it. Add that copy step to `build.ps1` before packing, or re-export after every plugin change. Say the word and I will wire the copy into the build.
+> **The binary in source control gets stale.** After unpacking, `solution/src/PluginAssemblies/…/ConversationDiagnosticsPlugins.dll` is a snapshot. Rebuild the plugin and that file is out of date until you copy the fresh one over it. Add that copy step to `build.ps1` before packing, or re-export after every plugin change.
 
 ---
 
@@ -370,6 +409,21 @@ Still failing with the right name? Switch the tool **Type** to **Custom Page** a
 ### Custom page errors when you add a parameter to its URL
 
 Custom pages reject arbitrary query string parameters. `?pagetype=custom&name=<page>` works; adding `&pwr_id=<guid>` produces a generic "An error has occurred". This is why the Routing Overview explains routing inline instead of deep linking.
+
+### Build fails with "Solution package type did not match requested type"
+
+```
+Command line argument: Both
+Package type: Unmanaged
+```
+
+The unpacked source under `solution/src` was written by `pac solution unpack --packagetype Unmanaged`, but the cdsproj builds `Both`. The source has to carry managed metadata as well.
+
+Re-run the capture, which exports both flavours and unpacks with `--packagetype Both`:
+
+```powershell
+.\deploy\capture-solution.ps1
+```
 
 ### Rebuilt and reimported, but nothing changed
 

@@ -1,6 +1,6 @@
-<environmentvariabledefinition schemaname="pwr_ClientSecretPlain">
-  <displayname default="Client Secret (plain fallback)">
-    <label description="Client Secret (plain fallback)" languagecode="1033" />
+<environmentvariabledefinition schemaname="pwr_AnalyzerPageName">
+  <displayname default="Conversation Analyzer page name">
+    <label description="Conversation Analyzer page name" languagecode="1033" />
   </displayname>
   <introducedversion>1.0.0.0</introducedversion>
   <iscustomizable>1</iscustomizable>

@@ -1,5 +1,5 @@
-<?xml version="1.0" encoding="utf-8"?>
-<ImportExportXml xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+﻿<?xml version="1.0" encoding="utf-8"?>
+<ImportExportXml xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" OrganizationVersion="9.2.26064.166" OrganizationSchemaType="Full" CRMServerServiceabilityVersion="9.2.26064.00166">
   <Entities />
   <Roles />
   <Workflows />
@@ -9,9 +9,13 @@
   <EntityRelationships />
   <OrganizationSettings />
   <optionsets />
+  <WebResources />
   <CustomControls />
+  <SolutionPluginAssemblies />
   <EntityDataProviders />
+  <CanvasApps />
   <Languages>
     <Language>1033</Language>
+    <Language>1043</Language>
   </Languages>
 </ImportExportXml>

@@ -1,0 +1,18 @@
+<customapi uniquename="pwr_TestDiagnosticsConnection">
+  <allowedcustomprocessingsteptype>0</allowedcustomprocessingsteptype>
+  <bindingtype>0</bindingtype>
+  <description default="Test Diagnostics Connection">
+    <label description="Test Diagnostics Connection" languagecode="1033" />
+  </description>
+  <displayname default="Test Diagnostics Connection">
+    <label description="Test Diagnostics Connection" languagecode="1033" />
+  </displayname>
+  <iscustomizable>1</iscustomizable>
+  <isfunction>0</isfunction>
+  <isprivate>0</isprivate>
+  <name>Test Diagnostics Connection</name>
+  <plugintypeid>
+    <plugintypeexportkey>0fe5ae24-7cb7-4635-b19e-dcb93770a7c0</plugintypeexportkey>
+  </plugintypeid>
+  <workflowsdkstepenabled>0</workflowsdkstepenabled>
+</customapi>

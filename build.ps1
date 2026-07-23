@@ -40,8 +40,15 @@ if (Test-Path $wrSource) {
 }
 
 function Install-Deps($path) {
-    if (Test-Path (Join-Path $path "package-lock.json")) { npm ci --prefix $path } else { npm install --prefix $path }
-    if ($LASTEXITCODE -ne 0) { throw "npm failed in $path" }
+    # npm resolves package.json from the working directory. Newer npm versions ignore
+    # --prefix for that lookup, so cd into the control instead of passing a path.
+    Push-Location $path
+    try {
+        if (Test-Path "package-lock.json") { npm ci } else { npm install }
+        if ($LASTEXITCODE -ne 0) { throw "npm failed in $path" }
+    } finally {
+        Pop-Location
+    }
 }
 
 Install-Deps (Join-Path $root "src/controls/ConversationAnalyzer")
@@ -60,7 +67,16 @@ if (-not (Test-Path $snk)) {
 dotnet build (Join-Path $root "src/plugin/ConversationDiagnostics.Plugins/ConversationDiagnostics.Plugins.csproj") -c Release
 if ($LASTEXITCODE -ne 0) { throw "Plugin build failed" }
 
-# Build the solution (packs the two PCF controls into managed + unmanaged zips)
+# If the plugin assembly is captured into solution/src, the packer uses that committed
+# copy rather than the one just built. Overwrite it so the zip carries current code.
+$packedDll = Get-ChildItem -Path (Join-Path $root "solution/src") -Recurse -Filter "ConversationDiagnosticsPlugins.dll" -ErrorAction SilentlyContinue | Select-Object -First 1
+if ($packedDll) {
+    $freshDll = Join-Path $root "src/plugin/ConversationDiagnostics.Plugins/bin/Release/net462/ConversationDiagnosticsPlugins.dll"
+    Copy-Item $freshDll $packedDll.FullName -Force
+    Write-Host "Refreshed packed plugin assembly: $($packedDll.FullName)" -ForegroundColor Cyan
+}
+
+# Build the solution (packs the controls, and the plugin if it is in solution/src)
 dotnet build (Join-Path $root "solution/ConversationDiagnostics.cdsproj") -c Release
 if ($LASTEXITCODE -ne 0) { throw "Solution build failed" }
 
@@ -79,5 +95,9 @@ Write-Host ""
 Write-Host "Done."
 Write-Host "  Solution zips: solution/bin/Release"
 Write-Host "  Plugin dll:    src/plugin/ConversationDiagnostics.Plugins/bin/Release/net462/ConversationDiagnosticsPlugins.dll"
-Write-Host ""
-Write-Host "Next: import the solution, then run deploy/push-plugin.ps1 and deploy/register-customapis.ps1"
+if (-not $packedDll) {
+    Write-Host ""
+    Write-Host "Note: the plugin assembly is not in solution/src, so the zip does not contain it." -ForegroundColor Yellow
+    Write-Host "Register it separately with deploy/push-plugin.ps1, or add it to the solution in the" -ForegroundColor Yellow
+    Write-Host "maker portal and unpack the export over solution/src (runbook step 13)." -ForegroundColor Yellow
+}

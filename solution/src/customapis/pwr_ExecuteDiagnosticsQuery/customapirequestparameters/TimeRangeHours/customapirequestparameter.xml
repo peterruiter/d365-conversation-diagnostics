@@ -1,0 +1,12 @@
+<customapirequestparameter uniquename="TimeRangeHours">
+  <description default="TimeRangeHours">
+    <label description="TimeRangeHours" languagecode="1033" />
+  </description>
+  <displayname default="TimeRangeHours">
+    <label description="TimeRangeHours" languagecode="1033" />
+  </displayname>
+  <iscustomizable>1</iscustomizable>
+  <isoptional>1</isoptional>
+  <name>TimeRangeHours</name>
+  <type>7</type>
+</customapirequestparameter>

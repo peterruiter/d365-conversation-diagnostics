@@ -1,31 +1,25 @@
 # Changelog
 
-## Unreleased
-- Corrected step 13 of the runbook. It told you to add the Customer Service workspace app and its site map to the solution, which makes the solution depend on Microsoft's Customer Service solutions and would overwrite site map customisations on a target tenant. Those stay a documented manual step. Added guidance on reading and triaging export dependency warnings.
-- **Replaced the Routing Overview drill-through with an inline explanation.** Custom pages reject arbitrary query string parameters, so a URL carrying `&pwr_id=<guid>` errored even though the same URL without it loaded fine. Selecting a work item now reveals an **Explain this routing** button that renders the timeline, metrics and written explanation in place — no navigation, no page name to configure. The `pwr_AnalyzerPageName` environment variable and its settings field are gone.
-- **Removed session auto-detection from the Conversation Analyzer**, including the "Use current session" button. Microsoft documents no supported session-context access for custom productivity tools and the attempts were unreliable. The field placeholder now states that a conversation URL is accepted as well as an ID.
-- Bumped both controls to 1.0.2.
-- Added `deploy/import-solution.ps1` and a `build.ps1 -Import` switch, so a rebuild can go straight into the environment with `--publish-changes` and `--activate-plugins` rather than uploading the zip by hand.
-- Bumped both control versions to 1.0.1. Dataverse only refreshes a code component when its version changes, so importing a rebuilt solution at the same version silently keeps the old control.
-- Added `build.ps1 -BumpControls` to increment the patch version in both manifests.
-- The settings web resource is now part of the solution source (`solution/src/WebResources/`) and is synced from `src/webresources/` on every build. Previously it was a loose file that had to be uploaded by hand after every change.
-- Build fixes for the changes below: moved `extractConversationId` into `idParser.ts` because a PCF control file must have exactly one export (`pcf-1023`), replaced a `.then()` whose callback returned nothing with async/await and turned off `promise/always-return` (`pcf-1065`), removed a useless assignment flagged by `no-useless-assignment`, and added definite assignment assertions on the `container` fields.
-- **Fixed the Routing Overview drill-through.** It built a URL from a hardcoded page name, but Power Apps derives custom page logical names from the display name and appends a random suffix (`pwr_conversationanalyzerpage_d9f1c`), so the name could never be predicted. The target page is now configured through a new `pwr_AnalyzerPageName` environment variable, surfaced on the settings page; the link explains itself when unset instead of 404ing.
-- **Stacked the Routing Overview detail panels vertically.** The 2-up grid pushed the wide Agent Assignment table off screen. Tables now get a forced-visible 14px horizontal scrollbar and a column-count hint when they overflow.
-- **The analyzer accepts a pasted record URL** as well as a bare or braced GUID. Named parameters win, and the app id is excluded before falling back to scanning for a GUID, so copying a link with the Copy link button now works.
-- **Improved session detection in the productivity pane.** Probes every reachable window rather than just `window.parent`, checks both `Xrm.App.sessions` and `Microsoft.Apm`, reads several documented context shapes, only trusts `entityId` on `msdyn_ocliveworkitem` sessions, and re-resolves on session switch. Added a **Use current session** button. Still best-effort: Microsoft documents no supported session-context access for custom productivity tools.
+All notable changes to this project are documented here. Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), versions follow [semantic versioning](https://semver.org/spec/v2.0.0.html).
 
-## 1.0.0 (unreleased)
-- Initial scaffold: server-side query plugin (3 Custom APIs), Conversation Analyzer PCF, Routing Overview PCF, settings web resource, FastTrack KQL query library, CI pipeline.
-- Removed the `pwr_TargetType` / `pwr_WorkspaceId` configuration. Application Insights is now the only query surface. The Log Analytics workspace API needs a different schema (`AppTraces` / `TimeGenerated` / `Properties`) than the FastTrack queries use (`traces` / `timestamp` / `customDimensions`), so the option never worked and only served as a misconfiguration trap. Workspace-based Application Insights resources are unaffected — the App Insights API reads the same data.
-- Renamed `LogAnalyticsClient` to `AppInsightsClient`.
-- Fixed `deploy/push-plugin.ps1`: `pac plugin push` requires a `--pluginId` that only exists after registration, so it cannot perform the initial assembly registration. The script now launches the Plugin Registration Tool for first-time setup and keeps `pac plugin push` for updates.
-- Added `docs/post-import-setup.md`, the full post-import runbook.
-- Documented that custom productivity tools cannot be scoped to a table or session type. `msdyn_panetoolconfiguration` exposes only a `Global` flag, so the recommendation changed from `Global = Yes` to `Global = No` (hides the tool on the home session, the closest available behaviour).
-- Corrected the documented Control Name for the productivity pane. The solution packager prepends the publisher customization prefix to the manifest namespace, so the registered controls are `pwr_ConversationDiagnostics.ConversationAnalyzer` and `pwr_ConversationDiagnostics.RoutingOverview`, not the unprefixed manifest names the docs previously gave. The unprefixed value produces `UciError: No manifest found`.
-- Added a `No manifest found` troubleshooting entry with the `customcontrols` lookup for verifying the exact Control Name.
-- **Corrected the productivity pane setup.** A custom control must first be registered as a pane tool configuration record (Copilot Service admin center → Productivity → Productivity tools) before it can be enabled on an experience profile; the docs previously jumped straight to the profile. Added the required **Productivity tools administrator** / **Productivity tools user** roles.
-- Fixed `resolveFromSession` in the Conversation Analyzer. It read `sessionId` and treated it as the conversation id — two different GUIDs, so it would have queried telemetry for an id that never appears there. It now reads the session *context* for the live work item id, and Microsoft documents that custom productivity tools have no supported access to session context at all, so the manual search box is the primary path.
-- **Fixed the Custom API parameter type for `TimeRangeHours`.** It was registered as type `6` (Float) with a comment wrongly claiming Integer; the correct value is `7`. Dataverse passed a `double` to the plugin, the `(int)` cast threw, and both dashboards failed with "An unexpected error occurred from ISV code" while Test connection still passed. Parameter types are immutable after creation, so `register-customapis.ps1` gained a `-Force` switch that deletes and recreates the APIs.
-- Plugins now read Custom API inputs tolerantly (`Convert.ToInt32` rather than a hard cast), trace the query key, parameters and generated KQL, and translate stray exceptions into `InvalidPluginExecutionException` so failures report their real cause instead of the generic ISV-code message.
-- Fixed `deploy/register-customapis.ps1`: it defaulted to the old dotted assembly name `ConversationDiagnostics.Plugins` and could never find the assembly, which registers as `ConversationDiagnosticsPlugins`. The lookup failure now lists the registered assemblies instead of dead-ending, and a missing plugin type reports the types that are present.
+## [1.0.0] - 2026-07-22
+
+First public release.
+
+### Added
+
+- **Routing Overview** control. Replica of the Microsoft FastTrack "Conversation Diagnostics" dashboard, running inside Dynamics. Incoming work items grid with classification, route-to-queue, assignment and timeline panels that cross-filter on row selection, plus seven problem spotlights: conversation state flow, fallback queue routing, overflow, repeat rejections, slow assignment, long handle times, and top rejecting agents.
+- **Inline routing explanations.** Select a work item and press **Explain this routing** for a plain-language account of every decision, rendered in place. Deterministic and rule-based: each sentence maps to a telemetry fact, with no AI in the read path.
+- **Conversation Analyzer** control. Timeline, metrics and explanation for a single conversation. Accepts a conversation ID, a braced GUID, or a record URL copied with the Copy link button. Runs as a custom page and as a productivity pane tool.
+- **Three Custom APIs** (`pwr_ExecuteDiagnosticsQuery`, `pwr_GetConversationDiagnostics`, `pwr_TestDiagnosticsConnection`) backed by a C# plugin that queries the Application Insights REST API with client-credentials auth. Callers pass a query key from a server-side registry, never raw KQL.
+- **Settings page** for tenant ID, client ID, secret and Application Insights App ID, with a **Test connection** button that exercises the full path and reports the specific failure.
+- **Secret handling** via a Key Vault-backed environment variable (`pwr_ClientSecret`), with a plain variable (`pwr_ClientSecretPlain`) as a documented fallback for dev and demo.
+- **Build and deploy scripts**: `build.ps1` (with `-BumpControls` and `-Import`), `deploy/import-solution.ps1`, `deploy/push-plugin.ps1`, `deploy/register-customapis.ps1`.
+- **GitHub Actions workflow**: tag `v*` to build and publish a release with both solution zips and the plugin assembly.
+- **Documentation**: post-import runbook, Azure setup, productivity pane setup, and architecture notes covering the design decisions and platform limits.
+
+### Notes on scope
+
+- Application Insights is the only supported query surface. The FastTrack KQL uses App Insights schema (`traces`, `timestamp`, `customDimensions`); the Log Analytics workspace API uses different table and column names and would need a parallel query set. Workspace-based App Insights resources work without change.
+- The productivity pane tool cannot detect the conversation on screen. Microsoft documents that custom productivity tools have no supported access to session context, so the pane takes a pasted ID or URL.
+- The plugin assembly is named `ConversationDiagnosticsPlugins` without dots, because the solution packager mangles dotted assembly names. The C# namespaces are unchanged.

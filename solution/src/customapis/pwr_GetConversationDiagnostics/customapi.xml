@@ -1,0 +1,18 @@
+<customapi uniquename="pwr_GetConversationDiagnostics">
+  <allowedcustomprocessingsteptype>0</allowedcustomprocessingsteptype>
+  <bindingtype>0</bindingtype>
+  <description default="Get Conversation Diagnostics">
+    <label description="Get Conversation Diagnostics" languagecode="1033" />
+  </description>
+  <displayname default="Get Conversation Diagnostics">
+    <label description="Get Conversation Diagnostics" languagecode="1033" />
+  </displayname>
+  <iscustomizable>1</iscustomizable>
+  <isfunction>0</isfunction>
+  <isprivate>0</isprivate>
+  <name>Get Conversation Diagnostics</name>
+  <plugintypeid>
+    <plugintypeexportkey>ee1c445b-c7ea-4a33-a400-2704435fe62a</plugintypeexportkey>
+  </plugintypeid>
+  <workflowsdkstepenabled>0</workflowsdkstepenabled>
+</customapi>
