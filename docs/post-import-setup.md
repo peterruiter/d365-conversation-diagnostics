@@ -1,6 +1,6 @@
 # Post-import setup
 
-You imported the solution. It contains the two PCF controls and five environment variable definitions — nothing else. The plugin, the Custom APIs, the settings page and the two custom pages are all still to come. Work through these steps in order; several depend on the one before.
+You imported the solution. It contains the two PCF controls, six environment variable definitions, and two new form-side web resources — nothing else besides what's listed below. The plugin, the Custom APIs, the settings page and the two custom pages are all still to come. Work through these steps in order; several depend on the one before.
 
 Budget 60–90 minutes for a first run.
 
@@ -13,20 +13,21 @@ The release solution carries the plugin assembly and the three Custom APIs, so *
 | In the solution | You still do by hand |
 |---|---|
 | Both PCF controls | Configure the connection (step 7) |
-| 5 environment variable definitions | Site map entries (step 9) |
+| 6 environment variable definitions | Site map entries (step 9) |
 | Plug-in assembly `ConversationDiagnosticsPlugins` | Productivity pane tool (step 10) |
 | 3 Custom APIs (`pwr_*`) | Custom API security (step 11) |
-| Settings web resource | |
+| Settings web resource | Wire up the supported launch button and/or the experimental context bridge (docs/setup-app-profile.md) |
+| `pwr_conversationanalyzer_launch` / `pwr_conversationcontext_bridge` web resources (unwired) | |
 | Both custom pages | |
 
-The right-hand column is what a solution cannot carry without trampling your own apps, plus the configuration only you have.
+The right-hand column is what a solution cannot carry without trampling your own apps, plus the configuration only you have. The two new web resources ship in the solution but are **not** wired to any form event or command by default — wiring them to the `msdyn_ocliveworkitem` form/command bar is a manual, opt-in step (docs/setup-app-profile.md) so the import never touches your own form or ribbon customizations.
 
 **Verify first.** Open the solution in the maker portal and confirm you see:
 
 - Both code components
-- Five environment variables (`pwr_TenantId`, `pwr_ClientId`, `pwr_AppInsightsAppId`, `pwr_ClientSecret`, `pwr_ClientSecretPlain`)
+- Six environment variables (`pwr_TenantId`, `pwr_ClientId`, `pwr_AppInsightsAppId`, `pwr_ClientSecret`, `pwr_ClientSecretPlain`, `pwr_ConversationAnalyzerPageName`)
 - The plug-in assembly and three Custom APIs
-- The `pwr_settings` web resource
+- The `pwr_settings`, `pwr_conversationanalyzer_launch` and `pwr_conversationcontext_bridge` web resources
 - Two custom pages
 
 **Steps 4, 5, 6 and 8 are already done for you.** Each opens with a check so you can confirm and move on. If you are building from source and your `solution/src` is missing a component folder, those steps tell you how to create it.
@@ -199,7 +200,9 @@ Missing? Build them:
 
 Same steps with the **ConversationAnalyzer** control. Name it whatever reads well.
 
-> You cannot choose the logical name. Power Apps derives it from the display name, prefixes it with your publisher prefix and appends a random suffix, so a page called `Conversation Analyzer` becomes something like `pwr_pwrconversationanalyzerpage_d9f1c`. Nothing depends on that name any more — the Routing Overview explains routing in place rather than linking out — but it is worth knowing when you go looking for a page in a list.
+> You cannot choose the logical name. Power Apps derives it from the display name, prefixes it with your publisher prefix and appends a random suffix, so a page called `Conversation Analyzer` becomes something like `pwr_pwrconversationanalyzerpage_d9f1c`. Copy that logical name into the `pwr_ConversationAnalyzerPageName` environment variable — maker portal → Solutions → your solution → find `pwr_ConversationAnalyzerPageName` under Environment variables → set **Current Value** to the logical name → Save. The "Open in Conversation Analyzer" button and the supported `navigateTo` launch route (docs/setup-app-profile.md) both need it to build the navigation call.
+
+On the page itself, set the `ConversationAnalyzer` control's `conversationId` input to the Power Fx expression `Param("recordId")`. That is what makes the supported deep-link route (below) hand the page a bound conversation via `Xrm.Navigation.navigateTo`'s `recordId`/`entityName` — a different, supported mechanism from the arbitrary query-string parameters custom pages reject (see [Troubleshooting](#custom-page-errors-when-you-add-a-parameter-to-its-url)).
 
 ## 9. Surface the pages in your apps
 
@@ -288,13 +291,14 @@ If you need it hidden outside conversations, that has to be handled inside the c
 4. Enable **Conversation Analyzer**, and save.
 5. Confirm the profile is assigned to the right users.
 
-### 10d. Expect to paste the id
+### 10d. Expect to paste the id — with two ways to skip it
 
-Microsoft documents that custom productivity tools **are not contextually bound to the session and have no supported mechanism to read session context**. So the analyzer cannot reliably auto-detect which conversation the representative is looking at.
+Microsoft documents that custom productivity tools **are not contextually bound to the session and have no supported mechanism to read session context**. So the analyzer's pane tool cannot use any Microsoft-supported API to auto-detect which conversation the representative is looking at, and the search box stays the primary, always-available path — paste the id.
 
-The control makes a best-effort attempt to read the live work item id from the focused session, and falls back to its search box when that returns nothing — which, per the documentation above, is the case you should plan for. Paste the conversation id from the record you are viewing.
+Two ways to avoid a manual paste, one supported and one experimental (full detail in [docs/setup-app-profile.md#getting-a-conversation-into-the-analyzer-without-a-manual-paste](setup-app-profile.md#getting-a-conversation-into-the-analyzer-without-a-manual-paste)):
 
-If auto-resolution matters more than pane placement, use the full **Conversation Analyzer** page from step 8 instead: opened from a record, you can pass the id on the URL as `pwr_id`, which the control reads directly.
+- **Supported — skip the pane entirely.** Bind the `ConversationAnalyzer` control directly on the `msdyn_ocliveworkitem` form, or add a command-bar button that opens the analyzer custom page via `Xrm.Navigation.navigateTo` with `recordId`/`entityName` (the same officially documented mechanism the "Open in Conversation Analyzer" button in step 12 uses). Either way, the id comes from the form's own record, not from reading pane session context.
+- **Experimental, opt-in — auto-fill the pane itself.** A form-side web resource (`pwr_conversationcontext_bridge.js`) broadcasts the conversation id over a same-origin `BroadcastChannel`; the pane control only listens when you turn on its `enableContextBridge` property (off by default). This depends on browser/hosting behavior Microsoft does not guarantee, is clearly labeled in the UI when it fills the box, and never disables manual search. See [docs/architecture.md#experimental-context-bridge](architecture.md#experimental-context-bridge) for the full risk assessment before turning it on.
 
 ## 11. Lock down who can query
 
@@ -312,8 +316,8 @@ Decide this before you roll out beyond a pilot group.
 
 1. Open **Routing Overview** in CSW. Incoming work items load for the last 6 hours.
 2. Click a row. The classification, route-to-queue, assignment and timeline panels fill.
-3. Click **Open in Conversation Analyzer**. The analyzer opens on that work item with the timeline, metrics and the written explanation.
-4. Open a conversation in CSW and check the analyzer in the productivity pane resolves the session automatically.
+3. Click **Open in Conversation Analyzer** (supported route). The analyzer opens on that work item with the timeline, metrics and the written explanation, already bound via `recordId`/`entityName` — no paste needed.
+4. Open a conversation in CSW and confirm the analyzer in the productivity pane shows its manual search box (expected — see step 10d). If you enabled the experimental context bridge, confirm it shows the labeled auto-fill banner instead, and that **Clear, use manual search** still works.
 5. Change the time range on the overview and confirm the problem spotlight sections load when expanded.
 
 Empty grids with no error mean telemetry, not configuration — go back to step 2.
@@ -418,7 +422,9 @@ Still failing with the right name? Switch the tool **Type** to **Custom Page** a
 
 ### Custom page errors when you add a parameter to its URL
 
-Custom pages reject arbitrary query string parameters. `?pagetype=custom&name=<page>` works; adding `&pwr_id=<guid>` produces a generic "An error has occurred". This is why the Routing Overview explains routing inline instead of deep linking.
+Custom pages reject arbitrary query string parameters added by hand to the browser URL. `?pagetype=custom&name=<page>` works; adding `&pwr_id=<guid>` produces a generic "An error has occurred". That part is a real platform limit and is why you cannot just hand-build a query-string deep link.
+
+It does **not** apply to `Xrm.Navigation.navigateTo`'s `pageInput.recordId`/`pageInput.entityName` — that is a different, supported mechanism (the page reads the values via `Param("recordId")`/`Param("entityName")`, not from the query string), and it's what the "Open in Conversation Analyzer" button and `pwr_conversationanalyzer_launch.js` use. See [docs/setup-app-profile.md](setup-app-profile.md#supported-bind-or-launch-the-analyzer-from-the-conversation).
 
 ### Build fails with "Solution package type did not match requested type"
 

@@ -103,3 +103,29 @@ export function getAppId(): string {
   const fromUrl = new URLSearchParams(window.location.search).get("appid");
   return fromUrl ?? "";
 }
+
+/** Environment variable holding the Conversation Analyzer custom page's logical name.
+    Custom pages get a random suffix appended by the maker portal, so the logical name
+    is environment-specific and cannot be hardcoded - see docs/setup-app-profile.md. */
+const ANALYZER_PAGE_NAME_VAR = "pwr_ConversationAnalyzerPageName";
+
+/** Opens the Conversation Analyzer custom page for a work item using the officially
+    supported Xrm.Navigation.navigateTo custom-page mechanism (pageInput recordId /
+    entityName, read on the page via Param("recordId") / Param("entityName")).
+    This is deliberately not a query-string deep link: custom pages only expose
+    Param()-recognized inputs, not arbitrary query parameters (see README Known limits).
+    Throws instead of swallowing failures so the caller can surface them in the UI. */
+export async function openConversationAnalyzerPage(workItemId: string): Promise<void> {
+  const pageName = await getEnvironmentVariable(ANALYZER_PAGE_NAME_VAR);
+  if (!pageName) {
+    throw new Error(`Set the ${ANALYZER_PAGE_NAME_VAR} environment variable to your Conversation Analyzer custom page's logical name first (docs/setup-app-profile.md).`);
+  }
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const navigation = (window.parent as any).Xrm?.Navigation ?? (window as any).Xrm?.Navigation;
+  if (!navigation?.navigateTo) throw new Error("Xrm.Navigation.navigateTo is not available in this host.");
+  await navigation.navigateTo(
+    { pageType: "custom", name: pageName, entityName: "msdyn_ocliveworkitem", recordId: workItemId },
+    { target: 2, position: 1, width: { value: 720, unit: "px" }, title: "Conversation Analyzer" }
+  );
+}
+

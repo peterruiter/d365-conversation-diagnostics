@@ -1,5 +1,5 @@
 import { IInputs, IOutputs } from "./generated/ManifestTypes";
-import { runNamedQuery, getConversationDiagnostics } from "./api";
+import { runNamedQuery, getConversationDiagnostics, openConversationAnalyzerPage } from "./api";
 import { explain, Explanation } from "./explainEngine";
 
 /* Routing Overview
@@ -63,7 +63,7 @@ export class RoutingOverview implements ComponentFramework.StandardControl<IInpu
         ${DETAIL_TILES.map((t) => `
           <div class="pwr-panel">
             <h3>${t.title} <span class="pwr-selected-id"></span>
-              ${t.key === "WorkItemTimeline" ? `<button class="pwr-analyze-btn" type="button" hidden>Explain this routing</button>` : ""}
+              ${t.key === "WorkItemTimeline" ? `<button class="pwr-analyze-btn" type="button" hidden>Explain this routing</button><button class="pwr-open-analyzer-btn pwr-btn-secondary" type="button" hidden title="Opens the Conversation Analyzer custom page using the supported Xrm.Navigation.navigateTo recordId/entityName mechanism">Open in Conversation Analyzer</button><span class="pwr-open-analyzer-error" hidden></span>` : ""}
             </h3>
             <div class="pwr-grid" data-tile="${t.key}"><div class="pwr-empty">Select a work item above.</div></div>
           </div>`).join("")}
@@ -86,6 +86,14 @@ export class RoutingOverview implements ComponentFramework.StandardControl<IInpu
     this.container.querySelector<HTMLButtonElement>(".pwr-refresh")?.addEventListener("click", () => void this.loadIncoming());
     this.container.querySelector<HTMLButtonElement>(".pwr-analyze-btn")?.addEventListener("click", () => {
       if (this.selectedWorkItem) void this.renderAnalysis(this.selectedWorkItem);
+    });
+    this.container.querySelector<HTMLButtonElement>(".pwr-open-analyzer-btn")?.addEventListener("click", () => {
+      if (!this.selectedWorkItem) return;
+      const errorEl = this.container.querySelector<HTMLElement>(".pwr-open-analyzer-error");
+      if (errorEl) errorEl.hidden = true;
+      openConversationAnalyzerPage(this.selectedWorkItem).catch((err) => {
+        if (errorEl) { errorEl.hidden = false; errorEl.textContent = (err as Error).message; }
+      });
     });
     this.container.querySelectorAll<HTMLDetailsElement>(".pwr-collapsible").forEach((d) => {
       d.addEventListener("toggle", () => {
@@ -121,6 +129,10 @@ export class RoutingOverview implements ComponentFramework.StandardControl<IInpu
     this.container.querySelectorAll<HTMLElement>(".pwr-selected-id").forEach((el) => (el.textContent = `· ${id}`));
     const analyzeBtn = this.container.querySelector<HTMLButtonElement>(".pwr-analyze-btn");
     if (analyzeBtn) analyzeBtn.hidden = false;
+    const openAnalyzerBtn = this.container.querySelector<HTMLButtonElement>(".pwr-open-analyzer-btn");
+    if (openAnalyzerBtn) openAnalyzerBtn.hidden = false;
+    const openAnalyzerError = this.container.querySelector<HTMLElement>(".pwr-open-analyzer-error");
+    if (openAnalyzerError) openAnalyzerError.hidden = true;
     // Collapse any previous explanation; it belongs to the previously selected row.
     const panel = this.container.querySelector<HTMLElement>(".pwr-analysis-panel");
     if (panel) panel.hidden = true;
@@ -131,9 +143,11 @@ export class RoutingOverview implements ComponentFramework.StandardControl<IInpu
     }
   }
 
-  /* Full routing explanation for the selected work item, rendered in place.
-     Deliberately not a navigation to the analyzer custom page: custom pages reject
-     arbitrary query string parameters, so a deep link carrying the id fails. */
+  /* Full routing explanation for the selected work item, rendered in place - this stays
+     the default because it needs no extra setup. "Open in Conversation Analyzer" above
+     is the supported deep link: it uses Xrm.Navigation.navigateTo's recordId/entityName
+     pageInput, not a query-string parameter, so it works where a ?pwr_id-style deep link
+     would not (see README Known limits). */
   private async renderAnalysis(workItemId: string): Promise<void> {
     const panel = this.container.querySelector<HTMLElement>(".pwr-analysis-panel");
     const body = this.container.querySelector<HTMLElement>(".pwr-analysis-body");

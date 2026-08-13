@@ -2,6 +2,18 @@
 
 All notable changes to this project are documented here. Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), versions follow [semantic versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- **Supported route to a bound conversation.** `ConversationAnalyzer` can be hosted directly on the `msdyn_ocliveworkitem` Conversation form, or launched already bound to the current conversation via `Xrm.Navigation.navigateTo`'s documented `pageInput.recordId`/`pageInput.entityName` mechanism (read on the custom page via `Param("recordId")`/`Param("entityName")`). `RoutingOverview` gained an **Open in Conversation Analyzer** button using this route (`api.ts#openConversationAnalyzerPage`); a new `pwr_conversationanalyzer_launch.js` web resource exposes the same call for a command-bar button on the Conversation form. Both need the new `pwr_ConversationAnalyzerPageName` environment variable, configurable from the settings page.
+- **Experimental, opt-in context bridge for the productivity pane.** A new form-side web resource, `pwr_conversationcontext_bridge.js`, publishes the current conversation/session id over a same-origin `BroadcastChannel` and tracks session focus via Microsoft's own `Microsoft.Apm`/`ON_SESSION_SWITCH` event. `ConversationAnalyzer` gained a matching `contextBridge.ts` client and a new `enableContextBridge` control property (off by default) that, when turned on, listens for these messages, validates them (schema version, GUID shape, freshness/TTL, focused-session match), and shows a labeled banner with a one-click way back to manual search. Manual paste is never disabled or hidden by this feature. Full risk assessment, rollback steps and Microsoft doc links in `docs/architecture.md` and `docs/setup-app-profile.md`.
+
+### Changed
+
+- Corrected the "custom pages reject extra URL parameters" known limit to distinguish arbitrary query-string parameters (rejected) from `navigateTo`'s `recordId`/`entityName` inputs (supported, and now used by the routes above).
+- Both PCF controls bumped to `1.0.3`.
+
 ## [1.0.0] - 2026-07-22
 
 First public release.
