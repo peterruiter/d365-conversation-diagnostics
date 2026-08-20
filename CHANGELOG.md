@@ -2,17 +2,28 @@
 
 All notable changes to this project are documented here. Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), versions follow [semantic versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [1.1.0] - 2026-08-20
+
+Thanks to [Marcus Schmidt](https://github.com/MarcusatMicrosoft) for the pull request that started this release — the `navigateTo` route below is his, and testing his original context-bridge design against a live environment is what led to the simpler pane auto-fill it became.
 
 ### Added
 
-- **Supported route to a bound conversation.** `ConversationAnalyzer` can be hosted directly on the `msdyn_ocliveworkitem` Conversation form, or launched already bound to the current conversation via `Xrm.Navigation.navigateTo`'s documented `pageInput.recordId`/`pageInput.entityName` mechanism (read on the custom page via `Param("recordId")`/`Param("entityName")`). `RoutingOverview` gained an **Open in Conversation Analyzer** button using this route (`api.ts#openConversationAnalyzerPage`); a new `pwr_conversationanalyzer_launch.js` web resource exposes the same call for a command-bar button on the Conversation form. Both need the new `pwr_ConversationAnalyzerPageName` environment variable, configurable from the settings page.
-- **Experimental, opt-in context bridge for the productivity pane.** A new form-side web resource, `pwr_conversationcontext_bridge.js`, publishes the current conversation/session id over a same-origin `BroadcastChannel` and tracks session focus via Microsoft's own `Microsoft.Apm`/`ON_SESSION_SWITCH` event. `ConversationAnalyzer` gained a matching `contextBridge.ts` client and a new `enableContextBridge` control property (off by default) that, when turned on, listens for these messages, validates them (schema version, GUID shape, freshness/TTL, focused-session match), and shows a labeled banner with a one-click way back to manual search. Manual paste is never disabled or hidden by this feature. Full risk assessment, rollback steps and Microsoft doc links in `docs/architecture.md` and `docs/setup-app-profile.md`.
+- **Record-scoped route to a bound conversation — the recommended way in.** `ConversationAnalyzer` can be hosted directly on the `msdyn_ocliveworkitem` Conversation form, or launched already bound to the current conversation via `Xrm.Navigation.navigateTo`'s documented `pageInput.recordId`/`pageInput.entityName` mechanism (read on the custom page via `Param("recordId")`/`Param("entityName")`). Both work identically whether the conversation is open or closed, which matters because Application Insights telemetry lags behind the live session. `RoutingOverview` gained an **Open in Conversation Analyzer** button using this route (`api.ts#openConversationAnalyzerPage`); a new `pwr_conversationanalyzer_launch.js` web resource exposes the same call for a command-bar button on the Conversation form. Both need the new `pwr_ConversationAnalyzerPageName` environment variable, configurable from the settings page.
+- **Automatic pane auto-fill for a live conversation.** Whenever `ConversationAnalyzer` is hosted in the productivity pane (i.e. it has no bound/URL id — the only host where that's ever true), it calls Microsoft's documented `Microsoft.Omnichannel.getConversationId()` directly — confirmed working against a real live agent session — and follows session switches via `Microsoft.Apm`'s `ON_SESSION_SWITCH` event, all without a relay or a separate web resource. Needs no configuration: the pane tool's admin config screen (`msdyn_panetoolconfiguration`) has no field to set a custom control's input properties, so this runs unconditionally rather than as a toggle. It only ever resolves an *ongoing* conversation, so the record-scoped routes above remain the primary way to look up a closed one. Since the pane can open before the conversation session finishes loading, it re-checks once a second (`AUTOFILL_POLL_MS`) until the input field holds an id, whether auto-filled or typed — then stops. Never overrides a manually-typed id: typing or pasting into the search box wins immediately, no extra step. Full detail in `docs/architecture.md` and `docs/setup-app-profile.md`.
+
+### Fixed
+
+- Settings page now trims leading/trailing whitespace from every field on save (and when loading an already-saved value), so an accidental trailing space no longer produces a silently-wrong tenant id, client id, App Insights App ID, secret, or page name.
+- `build.ps1 -BumpControls` now also bumps the solution's own `<Version>` build number (`solution/src/Other/Solution.xml`), so a control bump always ships as a distinguishable solution version instead of re-exporting the same version number.
 
 ### Changed
 
 - Corrected the "custom pages reject extra URL parameters" known limit to distinguish arbitrary query-string parameters (rejected) from `navigateTo`'s `recordId`/`entityName` inputs (supported, and now used by the routes above).
-- Both PCF controls bumped to `1.0.3`.
+- Both PCF controls bumped; `ConversationAnalyzer` is now `1.0.12`.
+
+### Removed
+
+- The auto-fill "Auto-detected from the open conversation" banner and its separate "Clear, use manual search" button. It added a step that was never necessary — the search box is always live, so typing or pasting into it directly already takes over immediately, with no button to press first.
 
 ## [1.0.0] - 2026-07-22
 

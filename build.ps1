@@ -29,6 +29,21 @@ if ($BumpControls) {
         $v = [regex]::Match($updated, 'constructor="[^"]+" version="([^"]+)"').Groups[1].Value
         Write-Host "Bumped $($manifest.Directory.Name) to $v" -ForegroundColor Cyan
     }
+
+    # A control bump changes what ships, so give the solution itself a new build number too -
+    # otherwise re-importing a solution with the same <Version> can leave admins unsure whether
+    # the import actually picked up the newer controls.
+    $solutionXml = Join-Path $root "solution/src/Other/Solution.xml"
+    if (Test-Path $solutionXml) {
+        $text = Get-Content $solutionXml -Raw
+        $updated = [regex]::Replace($text, '(<Version>)(\d+)\.(\d+)\.(\d+)\.(\d+)(</Version>)', {
+            param($m)
+            "$($m.Groups[1].Value)$($m.Groups[2].Value).$($m.Groups[3].Value).$($m.Groups[4].Value).$([int]$m.Groups[5].Value + 1)$($m.Groups[6].Value)"
+        })
+        Set-Content -Path $solutionXml -Value $updated -NoNewline
+        $sv = [regex]::Match($updated, '<Version>([^<]+)</Version>').Groups[1].Value
+        Write-Host "Bumped solution version to $sv" -ForegroundColor Cyan
+    }
 }
 
 # Keep the packaged web resources in step with their dev-source files under
@@ -39,8 +54,7 @@ if ($BumpControls) {
 $wrDir = Join-Path $root "solution/src/WebResources"
 $wrSources = @(
     "src/webresources/pwr_settings.html",
-    "src/webresources/pwr_conversationanalyzer_launch.js",
-    "src/webresources/pwr_conversationcontext_bridge.js"
+    "src/webresources/pwr_conversationanalyzer_launch.js"
 )
 foreach ($rel in $wrSources) {
     $wrSource = Join-Path $root $rel

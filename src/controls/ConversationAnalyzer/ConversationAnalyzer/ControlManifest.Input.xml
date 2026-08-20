@@ -1,14 +1,11 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <manifest>
-  <control namespace="ConversationDiagnostics" constructor="ConversationAnalyzer" version="1.0.3"
+  <control namespace="ConversationDiagnostics" constructor="ConversationAnalyzer" version="1.0.12"
            display-name-key="Conversation Analyzer"
            description-key="Timeline and deterministic explanation of unified routing decisions for a single conversation."
            control-type="standard">
     <property name="conversationId" display-name-key="Conversation Id" description-key="Optional bound/inbound conversation id (GUID)."
               of-type="SingleLine.Text" usage="input" required="false" />
-    <property name="enableContextBridge" display-name-key="Enable experimental context bridge (opt-in)"
-              description-key="EXPERIMENTAL, off by default. When Yes, the control also listens for an optional same-origin BroadcastChannel message published by the pwr_conversationcontext_bridge.js form script (see docs/architecture.md). Never disables manual paste or the bound/pwr_id inputs, which always take priority."
-              of-type="TwoOptions" usage="input" required="false" default-value="false" />
     <resources>
       <code path="index.ts" order="1" />
       <css path="css/analyzer.css" order="1" />

@@ -1,6 +1,6 @@
 # Post-import setup
 
-You imported the solution. It contains the two PCF controls, six environment variable definitions, and two new form-side web resources — nothing else besides what's listed below. The plugin, the Custom APIs, the settings page and the two custom pages are all still to come. Work through these steps in order; several depend on the one before.
+You imported the solution. It contains the two PCF controls, six environment variable definitions, and a form-side web resource for the analyzer launch button — nothing else besides what's listed below. The plugin, the Custom APIs, the settings page and the two custom pages are all still to come. Work through these steps in order; several depend on the one before.
 
 Budget 60–90 minutes for a first run.
 
@@ -16,18 +16,18 @@ The release solution carries the plugin assembly and the three Custom APIs, so *
 | 6 environment variable definitions | Site map entries (step 9) |
 | Plug-in assembly `ConversationDiagnosticsPlugins` | Productivity pane tool (step 10) |
 | 3 Custom APIs (`pwr_*`) | Custom API security (step 11) |
-| Settings web resource | Wire up the supported launch button and/or the experimental context bridge (docs/setup-app-profile.md) |
-| `pwr_conversationanalyzer_launch` / `pwr_conversationcontext_bridge` web resources (unwired) | |
+| Settings web resource | Wire up the supported launch button (docs/setup-app-profile.md) |
+| `pwr_conversationanalyzer_launch` web resource (unwired) | |
 | Both custom pages | |
 
-The right-hand column is what a solution cannot carry without trampling your own apps, plus the configuration only you have. The two new web resources ship in the solution but are **not** wired to any form event or command by default — wiring them to the `msdyn_ocliveworkitem` form/command bar is a manual, opt-in step (docs/setup-app-profile.md) so the import never touches your own form or ribbon customizations.
+The right-hand column is what a solution cannot carry without trampling your own apps, plus the configuration only you have. The `pwr_conversationanalyzer_launch` web resource ships in the solution but is **not** wired to any command by default — wiring it to the `msdyn_ocliveworkitem` command bar is a manual step (docs/setup-app-profile.md) so the import never touches your own ribbon customizations.
 
 **Verify first.** Open the solution in the maker portal and confirm you see:
 
 - Both code components
 - Six environment variables (`pwr_TenantId`, `pwr_ClientId`, `pwr_AppInsightsAppId`, `pwr_ClientSecret`, `pwr_ClientSecretPlain`, `pwr_ConversationAnalyzerPageName`)
 - The plug-in assembly and three Custom APIs
-- The `pwr_settings`, `pwr_conversationanalyzer_launch` and `pwr_conversationcontext_bridge` web resources
+- The `pwr_settings` and `pwr_conversationanalyzer_launch` web resources
 - Two custom pages
 
 **Steps 4, 5, 6 and 8 are already done for you.** Each opens with a check so you can confirm and move on. If you are building from source and your `solution/src` is missing a component folder, those steps tell you how to create it.
@@ -291,14 +291,12 @@ If you need it hidden outside conversations, that has to be handled inside the c
 4. Enable **Conversation Analyzer**, and save.
 5. Confirm the profile is assigned to the right users.
 
-### 10d. Expect to paste the id — with two ways to skip it
+### 10d. Plan for closed conversations, not just live ones
 
-Microsoft documents that custom productivity tools **are not contextually bound to the session and have no supported mechanism to read session context**. So the analyzer's pane tool cannot use any Microsoft-supported API to auto-detect which conversation the representative is looking at, and the search box stays the primary, always-available path — paste the id.
+The pane isn't contextually bound to the session, so it cannot natively tell which conversation is on screen — the search box stays the primary, always-available path, paste the id. But the bigger reason to not lean on the pane: Application Insights telemetry lags behind the live conversation, so most real lookups here happen *after* the conversation has closed, often by a supervisor who was never in that session. Plan for that from the start (full detail in [docs/setup-app-profile.md#getting-a-conversation-into-the-analyzer-without-a-manual-paste](setup-app-profile.md#getting-a-conversation-into-the-analyzer-without-a-manual-paste)):
 
-Two ways to avoid a manual paste, one supported and one experimental (full detail in [docs/setup-app-profile.md#getting-a-conversation-into-the-analyzer-without-a-manual-paste](setup-app-profile.md#getting-a-conversation-into-the-analyzer-without-a-manual-paste)):
-
-- **Supported — skip the pane entirely.** Bind the `ConversationAnalyzer` control directly on the `msdyn_ocliveworkitem` form, or add a command-bar button that opens the analyzer custom page via `Xrm.Navigation.navigateTo` with `recordId`/`entityName` (the same officially documented mechanism the "Open in Conversation Analyzer" button in step 12 uses). Either way, the id comes from the form's own record, not from reading pane session context.
-- **Experimental, opt-in — auto-fill the pane itself.** A form-side web resource (`pwr_conversationcontext_bridge.js`) broadcasts the conversation id over a same-origin `BroadcastChannel`; the pane control only listens when you turn on its `enableContextBridge` property (off by default). This depends on browser/hosting behavior Microsoft does not guarantee, is clearly labeled in the UI when it fills the box, and never disables manual search. See [docs/architecture.md#experimental-context-bridge](architecture.md#experimental-context-bridge) for the full risk assessment before turning it on.
+- **Recommended — skip the pane entirely.** Bind the `ConversationAnalyzer` control directly on the `msdyn_ocliveworkitem` form, or add a command-bar button that opens the analyzer custom page via `Xrm.Navigation.navigateTo` with `recordId`/`entityName` (the same officially documented mechanism the "Open in Conversation Analyzer" button in step 12 uses). Either way, the id comes from the form's own record, so it works the same whether the conversation is open or closed.
+- **Automatic — the pane auto-fills a live conversation on its own.** Nothing to configure: whenever the pane has no bound id (which is always, since the pane has nothing to bind it to), it calls Microsoft's own documented `Microsoft.Omnichannel.getConversationId()` directly. It only ever resolves an *ongoing* conversation, so it does nothing once that conversation closes — that's expected, and why it's a convenience on top of the routes above, not a substitute. See [docs/architecture.md#pane-auto-fill-for-live-conversations](architecture.md#pane-auto-fill-for-live-conversations).
 
 ## 11. Lock down who can query
 
@@ -317,7 +315,7 @@ Decide this before you roll out beyond a pilot group.
 1. Open **Routing Overview** in CSW. Incoming work items load for the last 6 hours.
 2. Click a row. The classification, route-to-queue, assignment and timeline panels fill.
 3. Click **Open in Conversation Analyzer** (supported route). The analyzer opens on that work item with the timeline, metrics and the written explanation, already bound via `recordId`/`entityName` — no paste needed.
-4. Open a conversation in CSW and confirm the analyzer in the productivity pane shows its manual search box (expected — see step 10d). If you enabled the experimental context bridge, confirm it shows the labeled auto-fill banner instead, and that **Clear, use manual search** still works.
+4. Open a genuinely ongoing conversation in CSW and confirm the analyzer in the productivity pane's search box fills in on its own (give it a second or two — see step 10d), and that typing over it immediately takes priority. On a closed conversation or a case session, expect the search box to stay empty instead — that's correct behavior, not a bug.
 5. Change the time range on the overview and confirm the problem spotlight sections load when expanded.
 
 Empty grids with no error mean telemetry, not configuration — go back to step 2.

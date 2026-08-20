@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <ImportExportXml version="9.2.26064.166" SolutionPackageVersion="9.2" languagecode="1033" generatedBy="CrmLive" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" OrganizationVersion="9.2.26064.166" OrganizationSchemaType="Full" CRMServerServiceabilityVersion="9.2.26064.00166">
   <SolutionManifest>
     <UniqueName>ConversationDiagnostics</UniqueName>
@@ -8,7 +8,7 @@
     <Descriptions>
       <Description description="Unified routing / conversation diagnostics dashboards inside Dynamics 365, backed by Azure Application Insights. No Azure access needed for users." languagecode="1033" />
     </Descriptions>
-    <Version>1.0.0.2</Version>
+    <Version>1.0.0.5</Version>
     <Managed>2</Managed>
     <Publisher>
       <UniqueName>PowerPete</UniqueName>
@@ -56,7 +56,6 @@
       <RootComponent type="300" schemaName="pwr_routingoverview_0e1fd" behavior="0" />
       <RootComponent type="61" schemaName="pwr_settings" behavior="0" />
       <RootComponent type="61" schemaName="pwr_conversationanalyzer_launch" behavior="0" />
-      <RootComponent type="61" schemaName="pwr_conversationcontext_bridge" behavior="0" />
       <RootComponent type="66" schemaName="pwr_ConversationDiagnostics.ConversationAnalyzer" behavior="0" />
       <RootComponent type="66" schemaName="pwr_ConversationDiagnostics.RoutingOverview" behavior="0" />
       <RootComponent type="91" id="{99bbe35a-17e8-48ab-9671-31d0b0d1317d}" schemaName="ConversationDiagnosticsPlugins, Version=1.0.0.0, Culture=neutral, PublicKeyToken=cdc6b8bdc9b49d7e" behavior="0" />

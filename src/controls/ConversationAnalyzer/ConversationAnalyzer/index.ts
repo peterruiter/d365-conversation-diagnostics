@@ -2,7 +2,7 @@ import { IInputs, IOutputs } from "./generated/ManifestTypes";
 import { getConversationDiagnostics, DiagnosticsEvent } from "./api";
 import { explain, Explanation } from "./explainEngine";
 import { extractConversationId, GUID_RE } from "./idParser";
-import { ContextBridgeClient, BridgeContext } from "./contextBridge";
+import { LiveSessionAutoFill } from "./liveSessionAutoFill";
 
 /* Conversation Analyzer
    Hosts in three places with the same code:
@@ -11,22 +11,39 @@ import { ContextBridgeClient, BridgeContext } from "./contextBridge";
    2. Productivity pane tool in Customer Service workspace
    3. Opened directly with ?pwr_id=<guid> where the host allows it
 
-   There is no supported session auto-detection: Microsoft documents that custom
-   productivity tools have no supported access to session context (see
-   docs/architecture.md). The bound conversationId input and ?pwr_id remain the
-   supported ways to pass context in; manual paste always keeps working.
+   The record-scoped routes above (bound conversationId input, ?pwr_id, and
+   Xrm.Navigation.navigateTo behind both) are the primary way to get a conversation in
+   here, because they work identically whether the conversation is open, closed, or a
+   week old - and since Application Insights telemetry lags behind the live session,
+   most real lookups happen after the conversation has already closed. See README
+   Known limits.
 
-   enableContextBridge (default off) turns on an EXPERIMENTAL companion: a same-origin
-   BroadcastChannel listener that follows an optional form-side publisher
-   (pwr_conversationcontext_bridge.js). It never overrides a manually-typed id and is
-   always clearly labeled when it supplies the id - see contextBridge.ts.            */
+   When the control has no bound/URL id - which only ever happens when it's hosted as
+   a pane tool, since both the custom page and a form binding always resolve an id -
+   it tries a supported, live-only convenience: Microsoft.Omnichannel.getConversationId()
+   (see liveSessionAutoFill.ts) resolves the ongoing conversation in the focused session
+   directly, no relay needed. This is unconditional rather than an opt-in control
+   property: msdyn_panetoolconfiguration (the "Pane tool configuration" record a Control-
+   type pane tool is registered with) has no field to set a custom control's input
+   properties, so a toggle here would be permanently stuck at its default for the one
+   host it matters in. It never overrides a manually-typed id - typing or pasting into
+   the search box always wins, immediately, with no extra step - and because the API
+   only ever answers for an *ongoing* conversation, it naturally does nothing once that
+   conversation closes.
+
+   The pane can also open before the conversation session has finished loading, so a
+   single check on load is not enough - getConversationId() legitimately has nothing to
+   answer for the first few seconds. AUTOFILL_POLL_MS re-checks while the box is still
+   empty and stops the moment it either finds an id or the representative starts typing. */
+
+const AUTOFILL_POLL_MS = 1000;
 
 export class ConversationAnalyzer implements ComponentFramework.StandardControl<IInputs, IOutputs> {
   private container!: HTMLDivElement;
   private currentId = "";
   private manualOverride = false;
-  private bridge: ContextBridgeClient | null = null;
-  private bridgeSuppliedId = false;
+  private autoFill: LiveSessionAutoFill | null = null;
+  private autoFillPollTimer: ReturnType<typeof setInterval> | null = null;
 
   public init(context: ComponentFramework.Context<IInputs>, _notify: () => void, _state: ComponentFramework.Dictionary, container: HTMLDivElement): void {
     this.container = container;
@@ -38,61 +55,72 @@ export class ConversationAnalyzer implements ComponentFramework.StandardControl<
     const resolved = bound || fromUrl;
     if (resolved) {
       void this.load(resolved);
-    } else if (context.parameters.enableContextBridge?.raw) {
-      this.startContextBridge();
+    } else {
+      this.startAutoFill();
     }
   }
 
   public updateView(context: ComponentFramework.Context<IInputs>): void {
     const bound = context.parameters.conversationId?.raw ?? "";
     if (bound && bound !== this.currentId) {
-      this.bridgeSuppliedId = false;
+      this.stopAutoFill();
       this.load(bound);
     }
-
-    const wantsBridge = !!context.parameters.enableContextBridge?.raw;
-    if (wantsBridge && !this.bridge) this.startContextBridge();
-    if (!wantsBridge && this.bridge) this.stopContextBridge();
   }
 
   public getOutputs(): IOutputs { return {}; }
-  public destroy(): void { this.stopContextBridge(); }
+  public destroy(): void { this.stopAutoFill(); }
 
-  private startContextBridge(): void {
-    this.bridge = new ContextBridgeClient(
-      (ctx) => this.onBridgeContext(ctx),
-      (message) => this.showBridgeError(message)
+  private startAutoFill(): void {
+    this.autoFill = new LiveSessionAutoFill(
+      (id) => this.onAutoFillId(id),
+      (message) => this.showAutoFillError(message)
     );
-    this.bridge.start();
+    this.autoFill.start();
+    this.startAutoFillPolling();
   }
 
-  private stopContextBridge(): void {
-    this.bridge?.destroy();
-    this.bridge = null;
+  private stopAutoFill(): void {
+    this.stopAutoFillPolling();
+    this.autoFill?.destroy();
+    this.autoFill = null;
   }
 
-  private onBridgeContext(ctx: BridgeContext): void {
+  /** The pane can open before the conversation session finishes loading, so the first
+      checkNow() (in LiveSessionAutoFill.start()) commonly finds nothing yet. Keep
+      re-checking once a second until either an id shows up or a person starts typing -
+      whichever the input field ends up holding, not just what auto-fill produced. */
+  private startAutoFillPolling(): void {
+    this.stopAutoFillPolling();
+    this.autoFillPollTimer = setInterval(() => {
+      if (this.manualOverride || this.currentId) { this.stopAutoFillPolling(); return; }
+      void this.autoFill?.checkNow();
+    }, AUTOFILL_POLL_MS);
+  }
+
+  private stopAutoFillPolling(): void {
+    if (this.autoFillPollTimer !== null) {
+      clearInterval(this.autoFillPollTimer);
+      this.autoFillPollTimer = null;
+    }
+  }
+
+  private onAutoFillId(id: string): void {
     if (this.manualOverride) return; // a person already took over - never snatch the box back
-    if (!ctx.focused) return; // only ever follow the session the form says is focused
-    if (this.currentId && this.currentId.toLowerCase() === ctx.conversationId) return; // already showing it
-    this.bridgeSuppliedId = true;
-    void this.load(ctx.conversationId);
+    if (this.currentId && this.currentId.toLowerCase() === id) return; // already showing it
+    void this.load(id);
   }
 
-  private showBridgeError(message: string): void {
-    const banner = this.container.querySelector<HTMLElement>(".pwr-bridge-error");
+  private showAutoFillError(message: string): void {
+    const banner = this.container.querySelector<HTMLElement>(".pwr-autofill-error");
     if (!banner) return;
     banner.hidden = false;
-    banner.textContent = `Context bridge (experimental): ${message}`;
+    banner.textContent = message;
   }
 
   private renderShell(): void {
     this.container.innerHTML = `
-      <div class="pwr-bridge-error" hidden></div>
-      <div class="pwr-bridge-banner" hidden>
-        <span class="pwr-bridge-banner-text"></span>
-        <button class="pwr-bridge-clear" type="button">Clear, use manual search</button>
-      </div>
+      <div class="pwr-autofill-error" hidden></div>
       <div class="pwr-search">
         <input type="text" class="pwr-input" placeholder="Paste a conversation ID or the conversation URL (Copy link)" aria-label="Conversation ID or conversation URL" />
         <button class="pwr-btn" type="button">Analyze</button>
@@ -110,42 +138,18 @@ export class ConversationAnalyzer implements ComponentFramework.StandardControl<
         return;
       }
       this.manualOverride = true;
-      this.bridgeSuppliedId = false;
-      this.hideBridgeBanner();
+      this.stopAutoFillPolling();
       this.load(id);
     };
     btn?.addEventListener("click", go);
     input?.addEventListener("keydown", (e) => { if (e.key === "Enter") go(); });
-    input?.addEventListener("input", () => { this.manualOverride = true; });
-    this.container.querySelector<HTMLButtonElement>(".pwr-bridge-clear")?.addEventListener("click", () => {
-      this.manualOverride = true;
-      this.bridgeSuppliedId = false;
-      this.currentId = "";
-      this.hideBridgeBanner();
-      if (input) input.value = "";
-      const body = this.container.querySelector<HTMLDivElement>(".pwr-body");
-      if (body) body.innerHTML = `<div class="pwr-empty">Paste a conversation ID, or the conversation URL from the <b>Copy link</b> button, to see its routing story.</div>`;
-    });
-  }
-
-  private hideBridgeBanner(): void {
-    const banner = this.container.querySelector<HTMLElement>(".pwr-bridge-banner");
-    if (banner) banner.hidden = true;
-  }
-
-  private showBridgeBanner(id: string): void {
-    const banner = this.container.querySelector<HTMLElement>(".pwr-bridge-banner");
-    const text = this.container.querySelector<HTMLElement>(".pwr-bridge-banner-text");
-    if (!banner || !text) return;
-    text.textContent = `Auto-detected from the open conversation (experimental) — ${id}`;
-    banner.hidden = false;
+    input?.addEventListener("input", () => { this.manualOverride = true; this.stopAutoFillPolling(); });
   }
 
   private async load(id: string): Promise<void> {
     this.currentId = id;
     const input = this.container.querySelector<HTMLInputElement>(".pwr-input");
     if (input) input.value = id;
-    if (this.bridgeSuppliedId) this.showBridgeBanner(id); else this.hideBridgeBanner();
     const body = this.container.querySelector<HTMLDivElement>(".pwr-body");
     if (!body) return;
     body.innerHTML = `<div class="pwr-loading">Loading diagnostics…</div>`;

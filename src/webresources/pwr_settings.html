@@ -67,14 +67,15 @@ async function load() {
     if (!def) continue;
     f.dataset.defId = def.environmentvariabledefinitionid;
     const val = def.environmentvariabledefinition_environmentvariablevalue[0];
-    if (val) { f.dataset.valId = val.environmentvariablevalueid; f.value = val.value || ""; }
-    else if (def.defaultvalue) f.value = def.defaultvalue;
+    if (val) { f.dataset.valId = val.environmentvariablevalueid; f.value = (val.value || "").trim(); }
+    else if (def.defaultvalue) f.value = def.defaultvalue.trim();
   }
 }
 
 async function save() {
   for (const f of fields) {
     if (!f.dataset.defId) continue;
+    f.value = f.value.trim(); // a trailing/leading space here is invisible in the input but breaks every downstream comparison (GUIDs, page names, secrets)
     const body = JSON.stringify({ value: f.value });
     if (f.dataset.valId) {
       await api(`environmentvariablevalues(${f.dataset.valId})`, { method: "PATCH", body });
