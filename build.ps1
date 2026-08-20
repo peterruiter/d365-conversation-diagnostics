@@ -31,22 +31,31 @@ if ($BumpControls) {
     }
 }
 
-# Keep the packaged settings page in step with the source of truth.
-# The captured web resource is named by its Dataverse Name, not by a file extension,
-# so read the target filename out of the .data.xml rather than assuming one. Writing
-# to the wrong filename leaves an orphan and your edits never reach the solution.
-$wrSource = Join-Path $root "src/webresources/pwr_settings.html"
+# Keep the packaged web resources in step with their dev-source files under
+# src/webresources. The captured web resource is named by its Dataverse Name, not by
+# a file extension, so read the target filename out of the .data.xml rather than
+# assuming one. Writing to the wrong filename leaves an orphan and your edits never
+# reach the solution.
 $wrDir = Join-Path $root "solution/src/WebResources"
-if ((Test-Path $wrSource) -and (Test-Path $wrDir)) {
-    $dataXml = Get-ChildItem -Path $wrDir -Filter "*.data.xml" -ErrorAction SilentlyContinue |
-        Where-Object { (Get-Content $_.FullName -Raw) -match "<Name>pwr_settings" } |
-        Select-Object -First 1
-    if ($dataXml) {
-        $wrTarget = Join-Path $wrDir ($dataXml.Name -replace "\.data\.xml$", "")
-        Copy-Item $wrSource $wrTarget -Force
-        Write-Host "Synced settings page to $([System.IO.Path]::GetFileName($wrTarget))" -ForegroundColor Cyan
-    } else {
-        Write-Host "No settings web resource found under solution/src/WebResources - skipping sync." -ForegroundColor Yellow
+$wrSources = @(
+    "src/webresources/pwr_settings.html",
+    "src/webresources/pwr_conversationanalyzer_launch.js",
+    "src/webresources/pwr_conversationcontext_bridge.js"
+)
+foreach ($rel in $wrSources) {
+    $wrSource = Join-Path $root $rel
+    $wrName = [System.IO.Path]::GetFileNameWithoutExtension($wrSource)
+    if ((Test-Path $wrSource) -and (Test-Path $wrDir)) {
+        $dataXml = Get-ChildItem -Path $wrDir -Filter "*.data.xml" -ErrorAction SilentlyContinue |
+            Where-Object { (Get-Content $_.FullName -Raw) -match "<Name>$wrName</Name>" } |
+            Select-Object -First 1
+        if ($dataXml) {
+            $wrTarget = Join-Path $wrDir ($dataXml.Name -replace "\.data\.xml$", "")
+            Copy-Item $wrSource $wrTarget -Force
+            Write-Host "Synced $wrName to $([System.IO.Path]::GetFileName($wrTarget))" -ForegroundColor Cyan
+        } else {
+            Write-Host "No $wrName web resource found under solution/src/WebResources - skipping sync." -ForegroundColor Yellow
+        }
     }
 }
 

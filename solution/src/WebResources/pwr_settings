@@ -40,6 +40,10 @@
   <input id="secretPlain" data-var="pwr_ClientSecretPlain" type="password" />
   <div class="hint">Preferred: leave this empty and configure the Key Vault-backed secret variable <code>pwr_ClientSecret</code> instead. This plain value is stored in Dataverse and readable by admins.</div>
 
+  <label for="analyzerPageName">Conversation Analyzer page name</label>
+  <input id="analyzerPageName" data-var="pwr_ConversationAnalyzerPageName" />
+  <div class="hint">Logical name of the Conversation Analyzer custom page (maker portal → the page → its random-suffixed name, e.g. <code>pwr_pwrconversationanalyzerpage_d9f1c</code>). Needed for the supported "Open in Conversation Analyzer" / command-bar launch route — see docs/setup-app-profile.md. Not required for manual paste or the productivity pane.</div>
+
   <div class="actions">
     <button class="primary" id="save">Save</button>
     <button class="secondary" id="test">Test connection</button>

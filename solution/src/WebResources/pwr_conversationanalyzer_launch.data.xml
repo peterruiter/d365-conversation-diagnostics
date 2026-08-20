@@ -1,0 +1,15 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<WebResource xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <WebResourceId>{2d9cae17-48b1-4966-9ccb-5acd74bd41c7}</WebResourceId>
+  <Name>pwr_conversationanalyzer_launch</Name>
+  <DisplayName>pwr_conversationanalyzer_launch</DisplayName>
+  <LanguageCode>0</LanguageCode>
+  <WebResourceType>3</WebResourceType>
+  <IntroducedVersion>1.0.0.0</IntroducedVersion>
+  <IsEnabledForMobileClient>0</IsEnabledForMobileClient>
+  <IsAvailableForMobileOffline>0</IsAvailableForMobileOffline>
+  <IsCustomizable>1</IsCustomizable>
+  <CanBeDeleted>1</CanBeDeleted>
+  <IsHidden>0</IsHidden>
+  <FileName>/WebResources/pwr_conversationanalyzer_launch2D9CAE17-48B1-4966-9CCB-5ACD74BD41C7</FileName>
+</WebResource>

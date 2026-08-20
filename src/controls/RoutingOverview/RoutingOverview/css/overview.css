@@ -39,6 +39,9 @@ td { border-bottom: 1px solid #f0f0f0; padding: 5px 8px; white-space: nowrap; ma
 /* Inline routing explanation */
 .pwr-analyze-btn { float: right; font-size: 12px; padding: 4px 10px; background: #0f6cbd; color: #fff; border: none; border-radius: 4px; cursor: pointer; }
 .pwr-analyze-btn:hover { background: #115ea3; }
+.pwr-open-analyzer-btn { float: right; font-size: 12px; padding: 4px 10px; margin-right: 6px; border-radius: 4px; cursor: pointer; background: #f3f2f1; color: #242424; border: 1px solid #d1d1d1; }
+.pwr-open-analyzer-btn:hover { background: #e5e5e5; }
+.pwr-open-analyzer-error { display: block; clear: both; color: #c50f1f; font-size: 11px; }
 .pwr-analysis-panel { border-left: 3px solid #0f6cbd; }
 .pwr-metrics { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
 .pwr-metric { background: #f5f5f5; border-radius: 6px; padding: 8px 12px; display: flex; flex-direction: column; min-width: 90px; }
